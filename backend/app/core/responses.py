@@ -34,6 +34,10 @@ class ApiResponse[T](BaseModel):
     error: ErrorBody | None = None
 
 
+class Deleted(BaseModel):
+    id: int
+
+
 class ErrorResponse(BaseModel):
     success: bool = False
     data: None = None

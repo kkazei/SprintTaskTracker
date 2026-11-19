@@ -59,6 +59,25 @@ class PermissionDeniedError(AppError):
     code = "forbidden"
 
 
+class InvalidFieldError(AppError):
+    """A well-formed value that fails a business rule (e.g. an assignee that doesn't exist).
+
+    Uses the same code and `details` shape as request validation errors, so clients can
+    attach the message to the offending form field.
+    """
+
+    status_code = 422
+    code = "validation_error"
+
+    def __init__(self, field: str, message: str) -> None:
+        super().__init__(
+            "Request validation failed",
+            details=[
+                {"field": field, "location": "body", "message": message, "type": "value_error"}
+            ],
+        )
+
+
 def error_response(
     status_code: int,
     code: str,

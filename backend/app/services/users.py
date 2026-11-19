@@ -5,6 +5,7 @@ from app.core.errors import AuthenticationError, ConflictError, NotFoundError, P
 from app.core.security import burn_password_check, hash_password, verify_password
 from app.models import User, UserRole
 from app.schemas.auth import RegisterRequest
+from app.services.common import escape_like
 
 
 def get_by_email(db: Session, email: str) -> User | None:
@@ -51,9 +52,11 @@ def list_users(
     db: Session, *, search: str | None, offset: int, limit: int
 ) -> tuple[list[User], int]:
     query = select(User).where(User.is_active.is_(True))
-    if search:
-        pattern = f"%{search}%"
-        query = query.where(or_(User.full_name.ilike(pattern), User.email.ilike(pattern)))
+    if search and (term := search.strip()):
+        pattern = f"%{escape_like(term)}%"
+        query = query.where(
+            or_(User.full_name.ilike(pattern, escape="\\"), User.email.ilike(pattern, escape="\\"))
+        )
 
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     users = db.scalars(query.order_by(User.full_name, User.id).offset(offset).limit(limit)).all()

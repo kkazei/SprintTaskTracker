@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -55,6 +55,15 @@ class Task(TimestampMixin, Base):
     assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id], lazy="raise")
     reporter: Mapped[User | None] = relationship(foreign_keys=[reporter_id], lazy="raise")
     sprint: Mapped[Sprint | None] = relationship(lazy="raise")
+
+    @property
+    def is_overdue(self) -> bool:
+        """Open work whose due date (compared in UTC, like the API filters) has passed."""
+        return (
+            self.status is not TaskStatus.DONE
+            and self.due_date is not None
+            and self.due_date < datetime.now(UTC).date()
+        )
 
     def __repr__(self) -> str:
         return f"<Task id={self.id} title={self.title!r} status={self.status}>"
