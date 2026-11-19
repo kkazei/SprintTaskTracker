@@ -12,7 +12,9 @@ import type {
   TaskStatus,
   TaskSummary,
   User,
+  UserRole,
 } from "@/lib/api/types";
+import { meQueryKey } from "@/lib/api/auth";
 import { BACKEND_PROXY_PATH as API } from "@/lib/constants";
 
 export type TaskListParams = {
@@ -141,5 +143,20 @@ export function useDeleteSprint() {
     },
     // Its tasks move to the backlog, so task lists and metrics change too.
     onSuccess: invalidate,
+  });
+}
+
+export function useChangeRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, role }: { id: number; role: UserRole }) =>
+      (await request<User>(`${API}/users/${id}/role`, { method: "PATCH", body: { role } })).data,
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.users }),
+        queryClient.invalidateQueries({ queryKey: meQueryKey }),
+        // Per-task permissions depend on roles.
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks }),
+      ]),
   });
 }

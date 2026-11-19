@@ -20,8 +20,8 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 const DEMO_ACCOUNTS = [
-  { label: "Admin demo", email: "admin@demo.com" },
-  { label: "Member demo", email: "member@demo.com" },
+  { label: "Admin demo", hint: "Manages sprints, roles & all tasks", email: "admin@demo.com" },
+  { label: "Member demo", hint: "Own and assigned tasks only", email: "member@demo.com" },
 ] as const;
 const DEMO_PASSWORD = "Password123!";
 
@@ -95,19 +95,23 @@ export function LoginForm() {
         <p className="text-muted-foreground">
           Try a demo account (password <code className="font-mono">{DEMO_PASSWORD}</code>):
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           {DEMO_ACCOUNTS.map((account) => (
             <Button
               key={account.email}
               type="button"
               variant="outline"
-              size="sm"
               onClick={() => fillDemo(account.email)}
+              className="h-auto flex-col items-start gap-0.5 py-2 text-left whitespace-normal"
             >
-              {account.label}
+              <span>{account.label}</span>
+              <span className="text-muted-foreground text-xs font-normal">{account.hint}</span>
             </Button>
           ))}
         </div>
+        <p className="text-muted-foreground text-xs">
+          Tip: sign in as each to compare what they can do.
+        </p>
       </div>
 
       <p className="text-muted-foreground text-center text-sm">
