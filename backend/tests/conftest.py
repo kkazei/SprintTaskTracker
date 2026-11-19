@@ -9,7 +9,9 @@ Point TEST_DATABASE_URL at a disposable database; it is wiped at the start of th
 
 import os
 from collections.abc import Callable, Iterator
+from datetime import date, timedelta
 from pathlib import Path
+from typing import Any
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/tracker_test"
@@ -30,7 +32,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 from app.core.security import create_access_token, hash_password  # noqa: E402
 from app.db.session import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import User, UserRole  # noqa: E402
+from app.models import Sprint, SprintStatus, Task, User, UserRole  # noqa: E402
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 TEST_PASSWORD = "Password123!"
@@ -120,3 +122,34 @@ def admin_headers(admin: User) -> dict[str, str]:
 @pytest.fixture
 def member_headers(member: User) -> dict[str, str]:
     return auth_headers(member)
+
+
+@pytest.fixture
+def make_sprint(db: Session, admin: User) -> Callable[..., Sprint]:
+    def _make_sprint(**overrides: Any) -> Sprint:
+        start = overrides.pop("start_date", date.today())
+        values: dict[str, Any] = {
+            "name": "Sprint",
+            "start_date": start,
+            "end_date": start + timedelta(days=13),
+            "status": SprintStatus.ACTIVE,
+            "created_by_id": admin.id,
+        }
+        sprint = Sprint(**(values | overrides))
+        db.add(sprint)
+        db.commit()
+        return sprint
+
+    return _make_sprint
+
+
+@pytest.fixture
+def make_task(db: Session) -> Callable[..., Task]:
+    def _make_task(**overrides: Any) -> Task:
+        values: dict[str, Any] = {"title": "A task"}
+        task = Task(**(values | overrides))
+        db.add(task)
+        db.commit()
+        return task
+
+    return _make_task
