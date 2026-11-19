@@ -1,6 +1,7 @@
 import { AppHeader } from "@/components/layout/app-header";
 
-export default function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
+/** Shared chrome for signed-in pages (dashboard, sprints, team). */
+export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <>
       <AppHeader />

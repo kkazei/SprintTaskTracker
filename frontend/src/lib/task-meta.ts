@@ -1,4 +1,4 @@
-import type { TaskPriority, TaskStatus } from "@/lib/api/types";
+import type { SprintStatus, TaskPriority, TaskStatus } from "@/lib/api/types";
 
 export const STATUSES: { value: TaskStatus; label: string; dot: string; bar: string }[] = [
   { value: "todo", label: "To do", dot: "bg-slate-400", bar: "bg-slate-400" },
@@ -26,6 +26,20 @@ export const PRIORITIES: { value: TaskPriority; label: string; className: string
   },
 ];
 
+export const SPRINT_STATUSES: { value: SprintStatus; label: string; className: string }[] = [
+  {
+    value: "active",
+    label: "Active",
+    className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
+  },
+  {
+    value: "planned",
+    label: "Planned",
+    className: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200",
+  },
+  { value: "completed", label: "Completed", className: "bg-muted text-muted-foreground" },
+];
+
 export const SORT_OPTIONS = [
   { value: "-created_at", label: "Newest first" },
   { value: "created_at", label: "Oldest first" },
@@ -36,6 +50,8 @@ export const SORT_OPTIONS = [
 ] as const;
 
 export const statusMeta = (status: TaskStatus) => STATUSES.find((s) => s.value === status)!;
+export const sprintStatusMeta = (status: SprintStatus) =>
+  SPRINT_STATUSES.find((s) => s.value === status)!;
 export const priorityMeta = (priority: TaskPriority) =>
   PRIORITIES.find((p) => p.value === priority)!;
 

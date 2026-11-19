@@ -5,6 +5,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { request } from "@/lib/api/client";
 import type {
   Sprint,
+  SprintInput,
   Task,
   TaskInput,
   TaskPriority,
@@ -108,6 +109,37 @@ export function useDeleteTask() {
       await request<{ id: number }>(`${API}/tasks/${id}`, { method: "DELETE" });
       return id;
     },
+    onSuccess: invalidate,
+  });
+}
+
+export function useCreateSprint() {
+  const invalidate = useInvalidateTaskData();
+  return useMutation({
+    mutationFn: async (input: SprintInput) =>
+      (await request<Sprint>(`${API}/sprints`, { method: "POST", body: input })).data,
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateSprint() {
+  const invalidate = useInvalidateTaskData();
+  return useMutation({
+    mutationFn: async ({ id, changes }: { id: number; changes: Partial<SprintInput> }) =>
+      (await request<Sprint>(`${API}/sprints/${id}`, { method: "PATCH", body: changes })).data,
+    // Sprint names and statuses are embedded in tasks, so refresh both.
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteSprint() {
+  const invalidate = useInvalidateTaskData();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await request<{ id: number }>(`${API}/sprints/${id}`, { method: "DELETE" });
+      return id;
+    },
+    // Its tasks move to the backlog, so task lists and metrics change too.
     onSuccess: invalidate,
   });
 }
