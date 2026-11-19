@@ -48,7 +48,9 @@ On startup the API container applies the Alembic migrations and loads demo data 
 - Login and registration with client-side validation; API field errors are shown on the matching inputs.
 - Dashboard with summary metrics — total, completed (with completion rate), pending, overdue, due this week — plus a status breakdown. Metrics follow the selected assignee/sprint scope.
 - Task list with filters for **status, priority, assignee, sprint, overdue** and a debounced **title search**, plus sorting and server-side pagination. Filters live in the URL, so views can be bookmarked and shared.
-- Create, edit, delete (with confirmation) and quick "move to status" actions. Actions are shown according to per-task permissions returned by the API.
+- Create, edit, delete (with confirmation) and quick "move to status" actions. Actions are shown according to per-task permissions returned by the API; tasks you can't change show a lock with an explanation.
+- **Sprints page:** sprint cards with status, dates, goal and progress, plus a link to each sprint's tasks. Admins create, edit, start, complete and delete sprints.
+- **Team page:** everyone's role at a glance; admins promote or demote members.
 - Responsive: table on desktop, cards on mobile. Loading skeletons, empty and error states, toasts.
 
 **Backend**
@@ -65,10 +67,15 @@ On startup the API container applies the Alembic migrations and loads demo data 
 | Create tasks | ✅ | ✅ |
 | Edit a task | if reporter or assignee | ✅ any |
 | Delete a task | if reporter | ✅ any |
-| Create / edit / delete sprints | — | ✅ |
-| Change a user's role | — | ✅ (not their own) |
+| Create / edit / start / complete / delete sprints (Sprints page) | — | ✅ |
+| Change a user's role (Team page) | — | ✅ (not their own) |
 
-New sign-ups are always Members. Roles are re-read from the database on every request, so a demotion takes effect immediately.
+New sign-ups are always Members. Roles are re-read from the database on every request, so a demotion takes effect immediately. The UI hides actions a role can't perform, but the API enforces every rule on its own.
+
+**Try it — compare the two demo accounts**
+1. Sign in as **Member demo**. The dashboard explains the member's permissions; only Max's own or assigned tasks have an actions menu (others show a lock). Sprints and Team are read-only.
+2. Sign out and sign in as **Admin demo**. Every task is editable, Sprints gains *New sprint* plus start/complete/delete, and Team shows a role dropdown for everyone except yourself.
+3. Optional: on Team, promote Max Member to admin, sign back in as Max and see the admin controls — then demote him again.
 
 ## Architecture
 
