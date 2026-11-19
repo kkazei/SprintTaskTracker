@@ -3,8 +3,9 @@
 import { PlusIcon, RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
 
+import { RoleNotice } from "@/components/role-notice";
 import { Button } from "@/components/ui/button";
-import { useCurrentUser } from "@/lib/api/auth";
+import { useCurrentUser, useRole } from "@/lib/api/auth";
 import { useSprints, useTasks, useUsers } from "@/lib/api/queries";
 import type { Task } from "@/lib/api/types";
 
@@ -18,6 +19,7 @@ import { useTaskFilters } from "./use-task-filters";
 
 export function DashboardView() {
   const { data: me } = useCurrentUser();
+  const role = useRole();
   const { data: users = [] } = useUsers();
   const { data: sprints = [] } = useSprints();
   const { filters, setFilters, resetFilters, isFiltered, scope, listParams } = useTaskFilters(
@@ -56,6 +58,14 @@ export function DashboardView() {
           New task
         </Button>
       </div>
+
+      {role === "member" && (
+        <RoleNotice>
+          You&apos;re a <strong className="text-foreground font-medium">member</strong>: you can
+          create tasks, edit tasks you reported or are assigned to, and delete tasks you
+          reported. Admins can change any task and manage sprints and roles.
+        </RoleNotice>
+      )}
 
       <SummaryCards scope={scope} scopeLabel={scopeLabel} />
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { CheckIcon, LockIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Task, TaskStatus } from "@/lib/api/types";
 import { useUpdateTask } from "@/lib/api/queries";
 import { STATUSES } from "@/lib/task-meta";
@@ -28,7 +29,20 @@ export function TaskActions({ task, onEdit, onDelete }: Props) {
   const { can_edit, can_delete } = task.permissions;
 
   if (!can_edit && !can_delete) {
-    return <span className="sr-only">No actions available</span>;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            tabIndex={0}
+            className="text-muted-foreground/60 inline-flex size-7 items-center justify-center"
+            aria-label="Read-only: only the reporter, assignee or an admin can change this task"
+          >
+            <LockIcon className="size-3.5" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>Only the reporter, assignee or an admin can change this task</TooltipContent>
+      </Tooltip>
+    );
   }
 
   function moveTo(status: TaskStatus) {
