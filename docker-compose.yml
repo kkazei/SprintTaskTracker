@@ -25,6 +25,7 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
     ports:
       - "8000:8000"
     depends_on:
