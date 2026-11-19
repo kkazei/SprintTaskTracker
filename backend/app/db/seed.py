@@ -148,7 +148,10 @@ def _build_tasks(
         window_end = sprint.end_date if sprint else today + timedelta(days=30)
         span = (window_end - window_start).days
 
-        created_on = window_start - timedelta(days=rng.randint(1, 5))
+        # Planned work is created before its sprint starts, but never later than today.
+        created_on = min(
+            window_start - timedelta(days=rng.randint(1, 5)), today - timedelta(days=1)
+        )
         due_date = None
         if rng.random() < 0.85:
             due_date = window_start + timedelta(days=rng.randint(3, span))

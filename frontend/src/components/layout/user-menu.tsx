@@ -15,15 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser, useLogout } from "@/lib/api/auth";
-
-export function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join("");
-}
+import { initials } from "@/lib/utils";
 
 export function UserMenu() {
   const { data: user, isPending } = useCurrentUser();
