@@ -91,3 +91,11 @@ export type TaskSummary = {
   by_status: Record<TaskStatus, number>;
   by_priority: Record<TaskPriority, number>;
 };
+
+export type SprintInput = {
+  name: string;
+  goal: string | null;
+  start_date: string;
+  end_date: string;
+  status: SprintStatus;
+};
