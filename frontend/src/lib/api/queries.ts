@@ -1,0 +1,113 @@
+"use client";
+
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { request } from "@/lib/api/client";
+import type {
+  Sprint,
+  Task,
+  TaskInput,
+  TaskPriority,
+  TaskStatus,
+  TaskSummary,
+  User,
+} from "@/lib/api/types";
+import { BACKEND_PROXY_PATH as API } from "@/lib/constants";
+
+export type TaskListParams = {
+  q?: string;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  assignee_id?: number;
+  unassigned?: boolean;
+  sprint_id?: number;
+  overdue?: boolean;
+  sort?: string;
+  page?: number;
+  page_size?: number;
+};
+
+export type SummaryScope = Pick<TaskListParams, "assignee_id" | "unassigned" | "sprint_id">;
+
+export const queryKeys = {
+  tasks: ["tasks"] as const,
+  taskList: (params: TaskListParams) => ["tasks", "list", params] as const,
+  summary: (scope: SummaryScope) => ["tasks", "summary", scope] as const,
+  users: ["users"] as const,
+  sprints: ["sprints"] as const,
+};
+
+export function useTasks(params: TaskListParams) {
+  return useQuery({
+    queryKey: queryKeys.taskList(params),
+    queryFn: ({ signal }) => request<Task[]>(`${API}/tasks`, { params, signal }),
+    // Keep showing the current page while the next page or filter loads (no flash of empty).
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useTaskSummary(scope: SummaryScope) {
+  return useQuery({
+    queryKey: queryKeys.summary(scope),
+    queryFn: async ({ signal }) =>
+      (await request<TaskSummary>(`${API}/tasks/summary`, { params: scope, signal })).data,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useUsers() {
+  return useQuery({
+    queryKey: queryKeys.users,
+    queryFn: async ({ signal }) =>
+      (await request<User[]>(`${API}/users`, { params: { page_size: 100 }, signal })).data,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSprints() {
+  return useQuery({
+    queryKey: queryKeys.sprints,
+    queryFn: async ({ signal }) =>
+      (await request<Sprint[]>(`${API}/sprints`, { params: { page_size: 100 }, signal })).data,
+    staleTime: 60_000,
+  });
+}
+
+/** Task changes affect lists, metrics and sprint progress, so refresh all of them. */
+function useInvalidateTaskData() {
+  const queryClient = useQueryClient();
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.sprints }),
+    ]);
+}
+
+export function useCreateTask() {
+  const invalidate = useInvalidateTaskData();
+  return useMutation({
+    mutationFn: async (input: TaskInput) =>
+      (await request<Task>(`${API}/tasks`, { method: "POST", body: input })).data,
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateTask() {
+  const invalidate = useInvalidateTaskData();
+  return useMutation({
+    mutationFn: async ({ id, changes }: { id: number; changes: Partial<TaskInput> }) =>
+      (await request<Task>(`${API}/tasks/${id}`, { method: "PATCH", body: changes })).data,
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteTask() {
+  const invalidate = useInvalidateTaskData();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await request<{ id: number }>(`${API}/tasks/${id}`, { method: "DELETE" });
+      return id;
+    },
+    onSuccess: invalidate,
+  });
+}
