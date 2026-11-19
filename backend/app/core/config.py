@@ -1,7 +1,10 @@
 from functools import lru_cache
+from typing import Self
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+INSECURE_DEFAULT_SECRET = "insecure-dev-secret-change-me-in-production"
 
 
 class Settings(BaseSettings):
@@ -11,12 +14,15 @@ class Settings(BaseSettings):
 
     app_name: str = "Team Task & Sprint Tracker API"
     environment: str = "development"
+    api_prefix: str = "/api/v1"
 
     database_url: str = "postgresql+psycopg://tracker:tracker@localhost:5432/tracker"
 
-    jwt_secret_key: str = "change-me-in-production"
+    jwt_secret_key: str = INSECURE_DEFAULT_SECRET
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+    # bcrypt work factor. 12 is a sensible production default; tests lower it for speed.
+    bcrypt_rounds: int = 12
 
     # Comma-separated list of allowed browser origins, e.g. "http://localhost:3000,https://app.example.com"
     cors_origins: str = "http://localhost:3000"
@@ -30,6 +36,16 @@ class Settings(BaseSettings):
             if value.startswith(prefix):
                 return "postgresql+psycopg://" + value.removeprefix(prefix)
         return value
+
+    @model_validator(mode="after")
+    def require_real_secret_in_production(self) -> Self:
+        if self.is_production and self.jwt_secret_key == INSECURE_DEFAULT_SECRET:
+            raise ValueError("JWT_SECRET_KEY must be set to a strong secret in production")
+        return self
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
 
     @property
     def cors_origin_list(self) -> list[str]:
