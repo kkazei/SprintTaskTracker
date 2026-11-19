@@ -1,7 +1,6 @@
+import { redirect } from "next/navigation";
+
+// The proxy normally redirects "/" before this renders; this is the fallback.
 export default function Home() {
-  return (
-    <main className="flex flex-1 items-center justify-center p-8">
-      <h1 className="text-2xl font-semibold">Team Task &amp; Sprint Tracker</h1>
-    </main>
-  );
+  redirect("/dashboard");
 }
