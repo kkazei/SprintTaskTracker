@@ -1,0 +1,28 @@
+# Render Blueprint for the API (https://render.com/docs/blueprint-spec).
+# Render → New → Blueprint → select this repo. You'll be prompted for DATABASE_URL
+# (e.g. a Neon connection string); JWT_SECRET_KEY is generated automatically.
+services:
+  - type: web
+    name: task-tracker-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health/ready
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      # The web app calls the API server-to-server, so browsers never hit it directly.
+      # Add your Vercel URL here only if you also want browser access (e.g. other clients).
+      - key: CORS_ORIGINS
+        value: http://localhost:3000
+      # Loads demo users/sprints/tasks on first boot; skipped once users exist.
+      - key: SEED_DEMO_DATA
+        value: "true"
