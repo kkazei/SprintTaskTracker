@@ -4,8 +4,9 @@ A mini SaaS for teams to plan sprints and track tasks: JWT authentication with A
 
 | | |
 |---|---|
-| **Web app** | _<add Vercel URL after deploying>_ |
-| **API** | _<add Render URL after deploying>_ · Swagger UI at `/docs` |
+| **Web app** | https://team-task-sprint-tracker.vercel.app |
+| **API** | https://task-tracker-api-90rd.onrender.com · [Swagger UI](https://task-tracker-api-90rd.onrender.com/docs) · [ReDoc](https://task-tracker-api-90rd.onrender.com/redoc) |
+| **Note** | The API runs on Render's free tier and sleeps when idle — the first request after a pause can take 30–60 s. |
 | **Demo logins** | `admin@demo.com` / `member@demo.com` — password `Password123!` |
 
 **Stack:** Next.js 16 (App Router, TypeScript, Tailwind, shadcn/ui, TanStack Query) · FastAPI (Python 3.13, SQLAlchemy 2, Alembic, Pydantic v2) · PostgreSQL 16 · Docker Compose · GitHub Actions
@@ -85,7 +86,7 @@ flowchart LR
 
 ## API documentation
 
-- **Swagger UI:** `<API URL>/docs` · **ReDoc:** `<API URL>/redoc` · **OpenAPI JSON:** `<API URL>/openapi.json`
+- **Swagger UI:** https://task-tracker-api-90rd.onrender.com/docs · **ReDoc:** https://task-tracker-api-90rd.onrender.com/redoc · **OpenAPI JSON:** https://task-tracker-api-90rd.onrender.com/openapi.json
 - A snapshot of the spec is committed at [`docs/openapi.json`](docs/openapi.json) — import it into **Postman** (Import → File) to get a ready-made collection. Regenerate with `cd backend && uv run python -m scripts.export_openapi`.
 - In Swagger: call `POST /api/v1/auth/login`, copy `access_token`, click **Authorize**.
 
