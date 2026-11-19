@@ -22,5 +22,4 @@ USER app
 
 EXPOSE 8000
 
-# PORT is injected by hosting platforms such as Render; default to 8000 locally.
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "scripts/start.sh"]
