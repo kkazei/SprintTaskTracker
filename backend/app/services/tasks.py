@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import ColumnElement, Select, func, select
+from sqlalchemy import ColumnElement, Select, func, select, update
 from sqlalchemy.orm import Session, joinedload
 
-from app.core.errors import InvalidFieldError, NotFoundError, PermissionDeniedError
+from app.core.errors import ConflictError, InvalidFieldError, NotFoundError, PermissionDeniedError
 from app.models import Sprint, Task, TaskPriority, TaskStatus, User, UserRole
 from app.schemas.task import TaskCreate, TaskSort, TaskSummary, TaskUpdate
 from app.services.common import escape_like, utc_today
@@ -50,6 +50,11 @@ _SORT_ORDER = {
 def can_edit(user: User, task: Task) -> bool:
     """Admins edit anything; members edit tasks they reported or are assigned to."""
     return user.role is UserRole.ADMIN or user.id in (task.reporter_id, task.assignee_id)
+
+
+def can_claim(user: User, task: Task) -> bool:
+    """Anyone may pick up unassigned work by assigning it to themselves ("Assign to me")."""
+    return task.assignee_id is None
 
 
 def can_delete(user: User, task: Task) -> bool:
@@ -192,10 +197,14 @@ NON_NULLABLE_FIELDS = ("title", "status", "priority")
 
 def update_task(db: Session, *, actor: User, task_id: int, payload: TaskUpdate) -> Task:
     task = get_task(db, task_id)
+    changes = payload.model_dump(exclude_unset=True)
+
     if not can_edit(actor, task):
+        # The one change a non-editor may make: claim an unassigned task for themselves.
+        if changes == {"assignee_id": actor.id} and can_claim(actor, task):
+            return _claim(db, actor=actor, task_id=task_id)
         raise PermissionDeniedError("You can only edit tasks you reported or are assigned to")
 
-    changes = payload.model_dump(exclude_unset=True)
     for name in NON_NULLABLE_FIELDS:
         if name in changes and changes[name] is None:
             raise InvalidFieldError(name, "This field cannot be null")
@@ -208,6 +217,22 @@ def update_task(db: Session, *, actor: User, task_id: int, payload: TaskUpdate) 
 
     db.commit()
     db.expire(task)  # reload relationships that may have changed (assignee, sprint)
+    return get_task(db, task_id)
+
+
+def _claim(db: Session, *, actor: User, task_id: int) -> Task:
+    # Conditional UPDATE so two people claiming at once can't overwrite each other.
+    result = db.execute(
+        update(Task)
+        .where(Task.id == task_id, Task.assignee_id.is_(None))
+        .values(assignee_id=actor.id, updated_at=func.now())
+        .execution_options(synchronize_session=False)
+    )
+    if result.rowcount == 0:
+        db.rollback()
+        raise ConflictError("Someone else just picked up this task", code="already_assigned")
+    db.commit()
+    db.expire_all()
     return get_task(db, task_id)
 
 
