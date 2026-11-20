@@ -1,21 +1,17 @@
 "use client";
 
-import { CheckIcon, LockIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
-import { toast } from "sonner";
+import { LockIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { Task, TaskStatus } from "@/lib/api/types";
-import { useUpdateTask } from "@/lib/api/queries";
-import { STATUSES } from "@/lib/task-meta";
+import type { Task } from "@/lib/api/types";
 
 type Props = {
   task: Task;
@@ -23,9 +19,11 @@ type Props = {
   onDelete: (task: Task) => void;
 };
 
-/** Row actions. Items are shown according to the per-task permissions the API returns. */
+/**
+ * Row actions, shown according to the per-task permissions the API returns.
+ * Status changes live in the row itself (TaskStatusSelect), so this menu is Edit / Delete.
+ */
 export function TaskActions({ task, onEdit, onDelete }: Props) {
-  const update = useUpdateTask();
   const { can_edit, can_delete } = task.permissions;
 
   if (!can_edit && !can_delete) {
@@ -45,17 +43,6 @@ export function TaskActions({ task, onEdit, onDelete }: Props) {
     );
   }
 
-  function moveTo(status: TaskStatus) {
-    update.mutate(
-      { id: task.id, changes: { status } },
-      {
-        onSuccess: () =>
-          toast.success(`Moved to ${STATUSES.find((s) => s.value === status)!.label}`),
-        onError: (error) => toast.error(error.message),
-      },
-    );
-  }
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -63,30 +50,12 @@ export function TaskActions({ task, onEdit, onDelete }: Props) {
           <MoreHorizontalIcon />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className="w-40">
         {can_edit && (
-          <>
-            <DropdownMenuItem onSelect={() => onEdit(task)}>
-              <PencilIcon />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-muted-foreground text-xs">Move to</DropdownMenuLabel>
-            {STATUSES.map((status) => (
-              <DropdownMenuItem
-                key={status.value}
-                disabled={status.value === task.status || update.isPending}
-                onSelect={() => moveTo(status.value)}
-              >
-                {status.value === task.status ? (
-                  <CheckIcon />
-                ) : (
-                  <span className={`ml-1 size-2 rounded-full ${status.dot}`} aria-hidden />
-                )}
-                {status.label}
-              </DropdownMenuItem>
-            ))}
-          </>
+          <DropdownMenuItem onSelect={() => onEdit(task)}>
+            <PencilIcon />
+            Edit
+          </DropdownMenuItem>
         )}
         {can_delete && (
           <>
