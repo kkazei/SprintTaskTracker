@@ -3,6 +3,7 @@
 import { ShieldCheckIcon, UserIcon, UsersIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { PageHeader } from "@/components/page-header";
 import { RoleNotice } from "@/components/role-notice";
 import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,8 @@ import type { User, UserRole } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/task-meta";
 
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
 export function TeamView() {
   const role = useRole();
   const { data: me } = useCurrentUser();
@@ -40,12 +43,14 @@ export function TeamView() {
 
   return (
     <div className="grid gap-6">
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
-        <p className="text-muted-foreground text-sm">
-          {users ? `${users.length} members · ${adminCount} admins` : "People on your workspace."}
-        </p>
-      </div>
+      <PageHeader
+        title="Team"
+        description={
+          users
+            ? `${plural(users.length, "member")} · ${plural(adminCount, "admin")}`
+            : "People in your workspace."
+        }
+      />
 
       {role === "member" && (
         <RoleNotice>Only admins can change roles. Ask an admin if you need more access.</RoleNotice>
