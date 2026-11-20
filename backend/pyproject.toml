@@ -11,6 +11,8 @@ dependencies = [
     "psycopg[binary]>=3.3.9",
     "pydantic-settings>=2.16.3",
     "pyjwt>=2.15.1",
+    # Optional at runtime, required when RATE_LIMIT_STORAGE_URI points at Redis.
+    "redis>=5.0",
     "slowapi>=0.1.10",
     "sqlalchemy>=2.0",
     "uvicorn[standard]>=0.54.0",

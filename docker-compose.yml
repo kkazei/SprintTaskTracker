@@ -26,6 +26,9 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      # Optional; when set on both services the BFF signs the browser IP for rate limiting.
+      CLIENT_IP_SECRET: ${CLIENT_IP_SECRET:-}
+      RATE_LIMIT_STORAGE_URI: ${RATE_LIMIT_STORAGE_URI:-memory://}
     ports:
       - "8000:8000"
     depends_on:
@@ -42,6 +45,8 @@ services:
     environment:
       # Server-side only: the Next.js server talks to the API over the compose network.
       API_URL: http://api:8000
+      CLIENT_IP_SECRET: ${CLIENT_IP_SECRET:-}
+      CLIENT_IP_TRUST_PROXY: ${CLIENT_IP_TRUST_PROXY:-false}
     ports:
       - "3000:3000"
     depends_on:

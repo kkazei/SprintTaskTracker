@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHmac } from "node:crypto";
+
 import { cookies } from "next/headers";
 
 import { SESSION_COOKIE } from "@/lib/constants";
@@ -24,12 +26,51 @@ export function errorEnvelope(status: number, code: string, message: string) {
   );
 }
 
+/**
+ * The browser's address as seen by the hosting edge.
+ *
+ * Only read these headers when the server is behind an edge that overwrites them (Vercel sets
+ * `VERCEL=1`; other trusted proxies can opt in with `CLIENT_IP_TRUST_PROXY=true`). A directly
+ * reachable Next.js server would otherwise let a client choose its own rate-limit bucket.
+ */
+export function clientIpFromRequest(request: Request): string | undefined {
+  const trustEdgeHeaders =
+    process.env.VERCEL === "1" || process.env.CLIENT_IP_TRUST_PROXY === "true";
+  if (!trustEdgeHeaders) return undefined;
+
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
+}
+
+/**
+ * Sign the client IP for the API, which refuses unsigned or stale assertions. Both sides must
+ * share CLIENT_IP_SECRET; without it no assertion is sent and the API keys by proxy address.
+ */
+function clientIdentityHeaders(clientIp?: string): Record<string, string> {
+  const secret = process.env.CLIENT_IP_SECRET;
+  if (!secret || !clientIp) return {};
+
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const signature = createHmac("sha256", secret)
+    .update(`${clientIp}:${timestamp}`)
+    .digest("hex");
+  return {
+    "X-Client-IP": clientIp,
+    "X-Client-IP-Timestamp": timestamp,
+    "X-Client-IP-Signature": signature,
+  };
+}
+
 /** Forward a request to the FastAPI service. Returns a 502 envelope if it is unreachable. */
 export async function callBackend(
   path: string,
-  init: { method: string; body?: string; token?: string; search?: string },
+  init: { method: string; body?: string; token?: string; search?: string; clientIp?: string },
 ): Promise<Response> {
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    ...clientIdentityHeaders(init.clientIp),
+  };
   if (init.body) headers["Content-Type"] = "application/json";
   if (init.token) headers.Authorization = `Bearer ${init.token}`;
 

@@ -18,6 +18,11 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s [%(name)s] %(messa
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    if settings.is_production and not settings.client_ip_secret:
+        logging.getLogger(__name__).warning(
+            "CLIENT_IP_SECRET is not set: rate limits will be keyed by the proxy address, so "
+            "requests through the BFF share one bucket. Set the same secret on Vercel and Render."
+        )
 
     app = FastAPI(
         title=settings.app_name,

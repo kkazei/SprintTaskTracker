@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import {
   callBackend,
   clearSessionToken,
+  clientIpFromRequest,
   errorEnvelope,
   getSessionToken,
   isCrossSiteRequest,
@@ -46,6 +47,7 @@ async function forward(request: NextRequest, { params }: Context) {
     body: body || undefined,
     token,
     search: request.nextUrl.search,
+    clientIp: clientIpFromRequest(request),
   });
 
   if (response.status === 401) {
