@@ -3,7 +3,7 @@ import { cn, initials } from "@/lib/utils";
 
 // Soft tints that read well in both themes; a user always gets the same one.
 const TINTS = [
-  "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200",
+  "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200",
   "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-200",
   "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200",
   "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200",

@@ -19,10 +19,7 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-const DEMO_ACCOUNTS = [
-  { label: "Admin demo", hint: "Manages sprints, roles & all tasks", email: "admin@demo.com" },
-  { label: "Member demo", hint: "Own and assigned tasks only", email: "member@demo.com" },
-] as const;
+const DEMO_ACCOUNTS = [{ email: "admin@demo.com" }, { email: "member@demo.com" }] as const;
 const DEMO_PASSWORD = "Password123!";
 
 /** Only follow same-site relative paths after login, never an absolute URL (open redirect). */
@@ -91,28 +88,25 @@ export function LoginForm() {
         {isSubmitting ? "Signing in…" : "Sign in"}
       </Button>
 
-      <div className="bg-muted/60 grid gap-2 rounded-lg p-3 text-sm">
-        <p className="text-muted-foreground">
-          Try a demo account (password <code className="font-mono">{DEMO_PASSWORD}</code>):
-        </p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {DEMO_ACCOUNTS.map((account) => (
-            <Button
-              key={account.email}
-              type="button"
-              variant="outline"
-              onClick={() => fillDemo(account.email)}
-              className="h-auto flex-col items-start gap-0.5 py-2 text-left whitespace-normal"
-            >
-              <span>{account.label}</span>
-              <span className="text-muted-foreground text-xs font-normal">{account.hint}</span>
-            </Button>
-          ))}
-        </div>
-        <p className="text-muted-foreground text-xs">
-          Tip: sign in as each to compare what they can do.
-        </p>
-      </div>
+      <p className="text-muted-foreground text-center text-sm">
+        Just looking? Try the{" "}
+        <button
+          type="button"
+          onClick={() => fillDemo(DEMO_ACCOUNTS[0].email)}
+          className="text-primary font-medium hover:underline"
+        >
+          admin
+        </button>{" "}
+        or{" "}
+        <button
+          type="button"
+          onClick={() => fillDemo(DEMO_ACCOUNTS[1].email)}
+          className="text-primary font-medium hover:underline"
+        >
+          member
+        </button>{" "}
+        demo.
+      </p>
 
       <p className="text-muted-foreground text-center text-sm">
         New here?{" "}
