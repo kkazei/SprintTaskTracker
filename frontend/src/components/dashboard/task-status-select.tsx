@@ -2,7 +2,13 @@
 
 import { toast } from "sonner";
 
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Task, TaskStatus } from "@/lib/api/types";
 import { useUpdateTask } from "@/lib/api/queries";
 import { cn } from "@/lib/utils";
@@ -38,8 +44,11 @@ export function TaskStatusSelect({ task }: { task: Task }) {
         aria-label={`Status of “${task.title}”: ${current.label}. Change status`}
         className="hover:bg-muted -ml-2 h-7 w-fit gap-1.5 border-transparent pr-1.5 pl-2 shadow-none dark:bg-transparent"
       >
-        <span className={cn("size-2 rounded-full", current.dot)} aria-hidden />
-        <span className="text-sm">{current.label}</span>
+        {/* Radix positions the popup from <SelectValue>; without it the list opens at 0,0. */}
+        <SelectValue>
+          <span className={cn("size-2 rounded-full", current.dot)} aria-hidden />
+          <span className="text-sm">{current.label}</span>
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {STATUSES.map((status) => (
