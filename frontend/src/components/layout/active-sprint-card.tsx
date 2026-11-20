@@ -7,24 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRole } from "@/lib/api/auth";
 import { useSprints } from "@/lib/api/queries";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** Whole days from today (local) until an ISO calendar date; negative once it has passed. */
-function daysUntil(isoDate: string): number {
-  const [y, m, d] = isoDate.split("-").map(Number);
-  const end = new Date(y, m - 1, d);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return Math.round((end.getTime() - today.getTime()) / DAY_MS);
-}
-
-function daysLeftLabel(isoDate: string): string {
-  const days = daysUntil(isoDate);
-  if (days < 0) return `Ended ${-days}d ago`;
-  if (days === 0) return "Ends today";
-  return `${days} day${days === 1 ? "" : "s"} left`;
-}
+import { daysLeftLabel } from "@/lib/dates";
 
 export function ActiveSprintCard({ onNavigate }: { onNavigate?: () => void }) {
   const { data: sprints, isPending } = useSprints();

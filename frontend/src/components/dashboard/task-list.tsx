@@ -3,6 +3,7 @@
 import { ClipboardListIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -42,12 +43,12 @@ export function TaskList({
 
   if (tasks.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-14 text-center">
-        <ClipboardListIcon className="text-muted-foreground size-8" aria-hidden />
-        <p className="font-medium">No tasks found</p>
-        <p className="text-muted-foreground max-w-sm text-sm">{emptyMessage}</p>
-        {emptyAction}
-      </div>
+      <EmptyState
+        icon={ClipboardListIcon}
+        title="No tasks found"
+        description={emptyMessage}
+        action={emptyAction}
+      />
     );
   }
 
@@ -57,10 +58,10 @@ export function TaskList({
       aria-busy={isRefreshing}
     >
       {/* Desktop: table */}
-      <div className="hidden rounded-xl border md:block">
+      <div className="bg-card hidden overflow-hidden rounded-xl border shadow-xs md:block">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-muted/40 hover:bg-muted/40 [&>th]:text-muted-foreground [&>th]:h-10 [&>th]:text-xs [&>th]:font-medium">
               <TableHead className="w-[40%] pl-4">Task</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Priority</TableHead>
@@ -73,14 +74,14 @@ export function TaskList({
           </TableHeader>
           <TableBody>
             {tasks.map((task) => (
-              <TableRow key={task.id}>
+              <TableRow key={task.id} className="[&>td]:py-3">
                 <TableCell className="max-w-0 pl-4">
                   <button
                     type="button"
                     onClick={() => task.permissions.can_edit && onEdit(task)}
                     className={cn(
                       "block max-w-full truncate text-left font-medium",
-                      task.permissions.can_edit && "hover:underline",
+                      task.permissions.can_edit && "hover:text-primary transition-colors",
                     )}
                     disabled={!task.permissions.can_edit}
                     title={task.title}
@@ -116,7 +117,7 @@ export function TaskList({
       {/* Mobile: cards */}
       <ul className="grid gap-2 md:hidden">
         {tasks.map((task) => (
-          <li key={task.id} className="bg-card grid gap-2 rounded-xl border p-3">
+          <li key={task.id} className="bg-card grid gap-2 rounded-xl border p-3 shadow-xs">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="font-medium break-words">{task.title}</p>

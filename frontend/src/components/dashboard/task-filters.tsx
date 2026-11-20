@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangleIcon, CalendarClockIcon, SearchIcon, XIcon } from "lucide-react";
+import { motion } from "motion/react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -90,13 +91,19 @@ export function TaskFilters({
                 aria-selected={view === tab.value}
                 onClick={() => view !== tab.value && onChange({ view: tab.value })}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
-                  view === tab.value
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
+                  "relative rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
+                  view === tab.value ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {tab.label}
+                {view === tab.value && (
+                  // One shared element slides between tabs instead of each tab toggling a background.
+                  <motion.span
+                    layoutId="task-view-indicator"
+                    className="bg-background absolute inset-0 rounded-md shadow-sm"
+                    transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
+                  />
+                )}
+                <span className="relative">{tab.label}</span>
               </button>
             ))}
           </div>

@@ -3,14 +3,15 @@
 import { CalendarRangeIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 
+import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { RoleNotice } from "@/components/role-notice";
+import { BlurFade } from "@/components/ui/blur-fade";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRole } from "@/lib/api/auth";
 import { useSprints } from "@/lib/api/queries";
 import type { Sprint, SprintStatus } from "@/lib/api/types";
-import { cn } from "@/lib/utils";
 import { SPRINT_STATUSES } from "@/lib/task-meta";
 
 import { DeleteSprintDialog } from "./delete-sprint-dialog";
@@ -65,16 +66,17 @@ export function SprintsView() {
 
       {role === "member" && (
         <RoleNotice>
-          Only admins can create, start, complete or delete sprints. You can view progress and
-          open a sprint&apos;s tasks.
+          Only admins can create, start, complete or delete sprints. You can view progress and open
+          a sprint&apos;s tasks.
         </RoleNotice>
       )}
 
       <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-1">
         {TABS.map((item) => {
-          const count = item.value === "all"
-            ? sprints?.length
-            : sprints?.filter((s) => s.status === item.value).length;
+          const count =
+            item.value === "all"
+              ? sprints?.length
+              : sprints?.filter((s) => s.status === item.value).length;
           return (
             <Button
               key={item.value}
@@ -100,29 +102,34 @@ export function SprintsView() {
           </Button>
         </div>
       ) : isPending ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy aria-label="Loading sprints">
+        <div
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          aria-busy
+          aria-label="Loading sprints"
+        >
           {Array.from({ length: 3 }, (_, i) => (
             <Skeleton key={i} className="h-56 rounded-xl" />
           ))}
         </div>
       ) : visible.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-14 text-center">
-          <CalendarRangeIcon className="text-muted-foreground size-8" aria-hidden />
-          <p className="font-medium">No sprints here</p>
-          <p className="text-muted-foreground text-sm">
-            {isAdmin ? "Create a sprint to start planning." : "An admin hasn't created one yet."}
-          </p>
-        </div>
+        <EmptyState
+          icon={CalendarRangeIcon}
+          title="No sprints here"
+          description={
+            isAdmin ? "Create a sprint to start planning." : "An admin hasn't created one yet."
+          }
+        />
       ) : (
-        <div className={cn("grid gap-4 sm:grid-cols-2 lg:grid-cols-3")}>
-          {visible.map((sprint) => (
-            <SprintCard
-              key={sprint.id}
-              sprint={sprint}
-              canManage={isAdmin}
-              onEdit={openEdit}
-              onDelete={setDeleting}
-            />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {visible.map((sprint, index) => (
+            <BlurFade key={sprint.id} delay={0.04 * index} duration={0.3}>
+              <SprintCard
+                sprint={sprint}
+                canManage={isAdmin}
+                onEdit={openEdit}
+                onDelete={setDeleting}
+              />
+            </BlurFade>
           ))}
         </div>
       )}
