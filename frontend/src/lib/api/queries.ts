@@ -23,14 +23,19 @@ export type TaskListParams = {
   priority?: TaskPriority;
   assignee_id?: number;
   unassigned?: boolean;
+  reporter_id?: number;
   sprint_id?: number;
   overdue?: boolean;
+  due_soon?: boolean;
   sort?: string;
   page?: number;
   page_size?: number;
 };
 
-export type SummaryScope = Pick<TaskListParams, "assignee_id" | "unassigned" | "sprint_id">;
+export type SummaryScope = Pick<
+  TaskListParams,
+  "assignee_id" | "unassigned" | "reporter_id" | "sprint_id"
+>;
 
 export const queryKeys = {
   tasks: ["tasks"] as const,
@@ -40,8 +45,9 @@ export const queryKeys = {
   sprints: ["sprints"] as const,
 };
 
-export function useTasks(params: TaskListParams) {
+export function useTasks(params: TaskListParams, { enabled = true } = {}) {
   return useQuery({
+    enabled,
     queryKey: queryKeys.taskList(params),
     queryFn: ({ signal }) => request<Task[]>(`${API}/tasks`, { params, signal }),
     // Keep showing the current page while the next page or filter loads (no flash of empty).
@@ -49,8 +55,9 @@ export function useTasks(params: TaskListParams) {
   });
 }
 
-export function useTaskSummary(scope: SummaryScope) {
+export function useTaskSummary(scope: SummaryScope, { enabled = true } = {}) {
   return useQuery({
+    enabled,
     queryKey: queryKeys.summary(scope),
     queryFn: async ({ signal }) =>
       (await request<TaskSummary>(`${API}/tasks/summary`, { params: scope, signal })).data,

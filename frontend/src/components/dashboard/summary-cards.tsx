@@ -60,8 +60,16 @@ const METRICS: Metric[] = [
   },
 ];
 
-export function SummaryCards({ scope, scopeLabel }: { scope: SummaryScope; scopeLabel: string }) {
-  const { data: summary, isPending, isError } = useTaskSummary(scope);
+export function SummaryCards({
+  scope,
+  scopeLabel,
+  enabled = true,
+}: {
+  scope: SummaryScope;
+  scopeLabel: string;
+  enabled?: boolean;
+}) {
+  const { data: summary, isPending, isError } = useTaskSummary(scope, { enabled });
 
   return (
     <section aria-labelledby="overview-heading" className="grid gap-3">

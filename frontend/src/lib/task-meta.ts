@@ -41,6 +41,7 @@ export const SPRINT_STATUSES: { value: SprintStatus; label: string; className: s
 ];
 
 export const SORT_OPTIONS = [
+  { value: "urgency", label: "Most urgent" },
   { value: "-created_at", label: "Newest first" },
   { value: "created_at", label: "Oldest first" },
   { value: "-updated_at", label: "Recently updated" },
