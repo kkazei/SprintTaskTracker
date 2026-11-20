@@ -676,6 +676,18 @@
             "description": "Only open tasks past their due date"
           },
           {
+            "name": "due_soon",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Only open tasks due within the next 7 days (incl. today)",
+              "default": false,
+              "title": "Due Soon"
+            },
+            "description": "Only open tasks due within the next 7 days (incl. today)"
+          },
+          {
             "name": "page",
             "in": "query",
             "required": false,
@@ -1019,6 +1031,18 @@
               "title": "Overdue"
             },
             "description": "Only open tasks past their due date"
+          },
+          {
+            "name": "due_soon",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Only open tasks due within the next 7 days (incl. today)",
+              "default": false,
+              "title": "Due Soon"
+            },
+            "description": "Only open tasks due within the next 7 days (incl. today)"
           }
         ],
         "responses": {
@@ -2909,6 +2933,7 @@
       "TaskSort": {
         "type": "string",
         "enum": [
+          "urgency",
           "-created_at",
           "created_at",
           "-updated_at",
