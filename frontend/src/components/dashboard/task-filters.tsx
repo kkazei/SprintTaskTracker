@@ -1,11 +1,10 @@
 "use client";
 
-import { SearchIcon, XIcon } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { AlertTriangleIcon, CalendarClockIcon, SearchIcon, XIcon } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -16,14 +15,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Sprint, User } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
 import { PRIORITIES, SORT_OPTIONS, STATUSES } from "@/lib/task-meta";
 
-import type { TaskFilterState } from "./use-task-filters";
+import type { DueFilter, TaskFilterState, TaskView } from "./use-task-filters";
 
 type Props = {
   filters: TaskFilterState;
+  view: TaskView | undefined;
+  sort: string;
   onChange: (changes: Partial<TaskFilterState>) => void;
   onReset: () => void;
   isFiltered: boolean;
@@ -31,10 +33,29 @@ type Props = {
   sprints: Sprint[];
 };
 
+const VIEW_TABS: { value: TaskView; label: string }[] = [
+  { value: "mine", label: "My tasks" },
+  { value: "reported", label: "Reported by me" },
+  { value: "all", label: "All tasks" },
+];
+
+const DUE_CHIPS: { value: Exclude<DueFilter, "any">; label: string; icon: ReactNode }[] = [
+  { value: "overdue", label: "Overdue", icon: <AlertTriangleIcon /> },
+  { value: "soon", label: "Due this week", icon: <CalendarClockIcon /> },
+];
+
 const SEARCH_DEBOUNCE_MS = 300;
 
-export function TaskFilters({ filters, onChange, onReset, isFiltered, users, sprints }: Props) {
-  const overdueId = useId();
+export function TaskFilters({
+  filters,
+  view,
+  sort,
+  onChange,
+  onReset,
+  isFiltered,
+  users,
+  sprints,
+}: Props) {
   const [search, setSearch] = useState(filters.q);
   const [syncedQ, setSyncedQ] = useState(filters.q);
 
@@ -52,98 +73,142 @@ export function TaskFilters({ filters, onChange, onReset, isFiltered, users, spr
   }, [search, filters.q, onChange]);
 
   return (
-    <div className="grid gap-3" role="search" aria-label="Filter tasks">
-      <div className="relative">
-        <SearchIcon
-          className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2"
-          aria-hidden
-        />
-        <Input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search task titles…"
-          aria-label="Search task titles"
-          className="h-9 pl-8"
-          maxLength={100}
-        />
+    <div className="grid gap-3">
+      {/* Whose tasks: the most common switch, so it's one click. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {view ? (
+          <div
+            role="tablist"
+            aria-label="Whose tasks"
+            className="bg-muted inline-flex rounded-lg p-0.5"
+          >
+            {VIEW_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                role="tab"
+                aria-selected={view === tab.value}
+                onClick={() => view !== tab.value && onChange({ view: tab.value })}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
+                  view === tab.value
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <Skeleton className="h-9 w-72 rounded-lg" />
+        )}
+
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Due date">
+          {DUE_CHIPS.map((chip) => {
+            const active = filters.due === chip.value;
+            return (
+              <Button
+                key={chip.value}
+                variant={active ? "secondary" : "outline"}
+                size="sm"
+                aria-pressed={active}
+                onClick={() => onChange({ due: active ? "any" : chip.value })}
+                className={cn(
+                  active && chip.value === "overdue" && "bg-destructive/10 text-destructive",
+                )}
+              >
+                {chip.icon}
+                {chip.label}
+              </Button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-        <FilterSelect
-          label="Status"
-          value={filters.status}
-          onValueChange={(status) => onChange({ status: status as TaskFilterState["status"] })}
-          options={[{ value: "all", label: "All statuses" }, ...STATUSES]}
-        />
-        <FilterSelect
-          label="Priority"
-          value={filters.priority}
-          onValueChange={(priority) =>
-            onChange({ priority: priority as TaskFilterState["priority"] })
-          }
-          options={[{ value: "all", label: "All priorities" }, ...PRIORITIES]}
-        />
-
-        <Select value={filters.assignee} onValueChange={(assignee) => onChange({ assignee })}>
-          <SelectTrigger className="w-full sm:w-44" aria-label="Assignee">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Everyone</SelectItem>
-            <SelectItem value="me">Assigned to me</SelectItem>
-            <SelectItem value="unassigned">Unassigned</SelectItem>
-            {users.length > 0 && <SelectSeparator />}
-            <SelectGroup>
-              {users.length > 0 && <SelectLabel>Team</SelectLabel>}
-              {users.map((user) => (
-                <SelectItem key={user.id} value={String(user.id)}>
-                  {user.full_name}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-
-        <FilterSelect
-          label="Sprint"
-          value={filters.sprint}
-          onValueChange={(sprint) => onChange({ sprint })}
-          className="sm:w-52"
-          options={[
-            { value: "all", label: "All sprints" },
-            ...sprints.map((sprint) => ({
-              value: String(sprint.id),
-              label: sprint.status === "active" ? `${sprint.name} (active)` : sprint.name,
-            })),
-          ]}
-        />
-
-        <FilterSelect
-          label="Sort"
-          value={filters.sort}
-          onValueChange={(sort) => onChange({ sort, page: filters.page })}
-          className="sm:w-44"
-          options={[...SORT_OPTIONS]}
-        />
-
-        <div className="flex h-8 items-center gap-2 sm:px-2">
-          <Switch
-            id={overdueId}
-            checked={filters.overdue}
-            onCheckedChange={(overdue) => onChange({ overdue })}
+      <div role="search" aria-label="Filter tasks" className="grid gap-3">
+        <div className="relative">
+          <SearchIcon
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2"
+            aria-hidden
           />
-          <Label htmlFor={overdueId} className="text-sm font-normal">
-            Overdue only
-          </Label>
+          <Input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search task titles…"
+            aria-label="Search task titles"
+            className="h-9 pl-8"
+            maxLength={100}
+          />
         </div>
 
-        {isFiltered && (
-          <Button variant="ghost" size="sm" onClick={onReset} className="justify-self-start">
-            <XIcon />
-            Clear filters
-          </Button>
-        )}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <FilterSelect
+            label="Status"
+            value={filters.status}
+            onValueChange={(status) => onChange({ status: status as TaskFilterState["status"] })}
+            options={[{ value: "all", label: "All statuses" }, ...STATUSES]}
+          />
+          <FilterSelect
+            label="Priority"
+            value={filters.priority}
+            onValueChange={(priority) =>
+              onChange({ priority: priority as TaskFilterState["priority"] })
+            }
+            options={[{ value: "all", label: "All priorities" }, ...PRIORITIES]}
+          />
+
+          {view === "all" && (
+            <Select value={filters.assignee} onValueChange={(assignee) => onChange({ assignee })}>
+              <SelectTrigger className="w-full sm:w-44" aria-label="Assignee">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any assignee</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {users.length > 0 && <SelectSeparator />}
+                <SelectGroup>
+                  {users.length > 0 && <SelectLabel>Team</SelectLabel>}
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={String(user.id)}>
+                      {user.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          )}
+
+          <FilterSelect
+            label="Sprint"
+            value={filters.sprint}
+            onValueChange={(sprint) => onChange({ sprint })}
+            className="sm:w-52"
+            options={[
+              { value: "all", label: "All sprints" },
+              ...sprints.map((sprint) => ({
+                value: String(sprint.id),
+                label: sprint.status === "active" ? `${sprint.name} (active)` : sprint.name,
+              })),
+            ]}
+          />
+
+          <FilterSelect
+            label="Sort"
+            value={sort}
+            onValueChange={(value) => onChange({ sort: value, page: filters.page })}
+            className="sm:w-44"
+            options={[...SORT_OPTIONS]}
+          />
+
+          {isFiltered && (
+            <Button variant="ghost" size="sm" onClick={onReset} className="justify-self-start">
+              <XIcon />
+              Clear filters
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
