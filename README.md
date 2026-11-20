@@ -4,7 +4,7 @@ A mini SaaS for teams to plan sprints and track tasks: JWT authentication with A
 
 | | |
 |---|---|
-| **Web app** | https://team-task-sprint-tracker.vercel.app |
+| **Web app** | https://sprint-task-tracker-sigma.vercel.app |
 | **API** | https://task-tracker-api-90rd.onrender.com · [Swagger UI](https://task-tracker-api-90rd.onrender.com/docs) · [ReDoc](https://task-tracker-api-90rd.onrender.com/redoc) |
 | **Note** | The API runs on Render's free tier and sleeps when idle — the first request after a pause can take 30–60 s. |
 | **Demo logins** | `admin@demo.com` / `member@demo.com` — password `Password123!` |
@@ -44,8 +44,8 @@ A mini SaaS for teams to plan sprints and track tasks: JWT authentication with A
 ## Quick start (Docker)
 
 ```bash
-git clone https://github.com/kkazei/team-task-sprint-tracker.git
-cd team-task-sprint-tracker
+git clone https://github.com/kkazei/SprintTaskTracker.git
+cd SprintTaskTracker
 docker compose up --build
 ```
 
