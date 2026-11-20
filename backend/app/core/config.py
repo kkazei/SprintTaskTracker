@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed browser origins, e.g. "http://localhost:3000,https://app.example.com"
     cors_origins: str = "http://localhost:3000"
 
+    # Shared secret used by the Next.js BFF to sign the browser's client IP. When unset, the
+    # API ignores all forwarding/identity headers and keys rate limits by the direct peer.
+    client_ip_secret: str | None = None
+    # SlowAPI storage. Use (for example) `redis://host:6379/0` when running multiple workers or
+    # instances so limits are shared instead of counted per process.
+    rate_limit_storage_uri: str = "memory://"
+
     @field_validator("database_url")
     @classmethod
     def use_psycopg_driver(cls, value: str) -> str:

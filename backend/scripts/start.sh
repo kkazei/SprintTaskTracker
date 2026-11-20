@@ -10,5 +10,6 @@ if [ "${SEED_DEMO_DATA:-true}" = "true" ]; then
   python -m app.db.seed
 fi
 
-# PORT is injected by hosting platforms such as Render; default to 8000 locally.
-exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}" --proxy-headers --forwarded-allow-ips "*"
+# Do NOT trust forwarded headers: the API is publicly reachable, so X-Forwarded-For could be
+# forged. Client identity for rate limiting comes from the BFF's signed assertion instead.
+exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"

@@ -4,13 +4,22 @@ from fastapi import Request
 from fastapi.responses import Response
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
+from app.core.client_ip import get_client_ip
+from app.core.config import get_settings
 from app.core.errors import error_response
 
-# Uvicorn's trusted proxy handling updates ``request.client`` before SlowAPI sees it, so this
-# keys limits by the original client IP in production and by the direct address locally.
-limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
+# Uvicorn is started without proxy-header trust (see scripts/start.sh), so `X-Forwarded-For`
+# cannot influence identity. The key function accepts only a valid HMAC-signed assertion from
+# our BFF and otherwise falls back to the direct peer address.
+#
+# `RATE_LIMIT_STORAGE_URI` lets deployments share counters across workers/instances via Redis;
+# the in-memory default is only consistent within one process.
+limiter = Limiter(
+    key_func=get_client_ip,
+    headers_enabled=True,
+    storage_uri=get_settings().rate_limit_storage_uri,
+)
 
 
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Response:

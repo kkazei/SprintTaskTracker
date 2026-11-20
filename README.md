@@ -22,6 +22,8 @@ A mini SaaS for teams to plan sprints and track tasks: JWT authentication with A
 - [Local development without Docker](#local-development-without-docker)
 - [Environment variables](#environment-variables)
 - [Testing & CI](#testing--ci)
+- [Demo Environment & Security Limitations](#demo-environment--security-limitations)
+- [Security Headers & CSP](#security-headers--csp)
 - [Deployment](#deployment)
 - [Architecture & Scaling Note](#architecture--scaling-note)
 - [Project structure](#project-structure)
@@ -50,6 +52,7 @@ On startup the API container applies the Alembic migrations and loads demo data 
 - **My tasks / Reported by me / All tasks** tabs. Members land on *My tasks* sorted **most urgent first** (open work, then soonest due date, then priority); admins land on *All tasks*. The last tab you picked is remembered.
 - One-click **Overdue** and **Due this week** chips, plus filters for **status, priority, assignee, sprint** and a debounced **title search**, sorting and server-side pagination. Filters live in the URL, so views can be bookmarked and shared.
 - **Change status right in the row**: the status cell is a dropdown on tasks you're allowed to edit.
+- **Claim unassigned work**: tasks without an assignee show an *Assign to me* button (or menu item) for any signed-in user. The claim is a conditional update, so if two people click at once the second gets a clear "someone else just picked up this task" conflict instead of overwriting the first.
 - Create, edit, delete (with confirmation) and quick "move to status" actions. Actions are shown according to per-task permissions returned by the API; tasks you can't change show a lock with an explanation.
 - **Sprints page:** sprint cards with status, dates, goal and progress, plus a link to each sprint's tasks. Admins create, edit, start, complete and delete sprints.
 - **Team page:** everyone's role at a glance; admins promote or demote members.
@@ -68,6 +71,7 @@ On startup the API container applies the Alembic migrations and loads demo data 
 | View tasks, sprints, metrics, team | ✅ | ✅ |
 | Create tasks | ✅ | ✅ |
 | Edit a task | if reporter or assignee | ✅ any |
+| Claim an unassigned task (assign it to yourself) | ✅ | ✅ |
 | Delete a task | if reporter | ✅ any |
 | Create / edit / start / complete / delete sprints (Sprints page) | — | ✅ |
 | Change a user's role (Team page) | — | ✅ (not their own) |
@@ -108,7 +112,7 @@ flowchart LR
 | `GET` | `/api/v1/tasks/summary` | Dashboard metrics (same filters) | Authenticated |
 | `GET` | `/api/v1/tasks/{id}` | Get a task | Authenticated |
 | `POST` | `/api/v1/tasks` | Create a task | Authenticated |
-| `PATCH` | `/api/v1/tasks/{id}` | Partial update | Admin, reporter or assignee |
+| `PATCH` | `/api/v1/tasks/{id}` | Partial update; `{"assignee_id": <self id>}` on an unassigned task also claims it | Admin, reporter or assignee; any user may claim unassigned work |
 | `DELETE` | `/api/v1/tasks/{id}` | Delete | Admin or reporter |
 | `GET` | `/api/v1/sprints` | List sprints with progress | Authenticated |
 | `GET` | `/api/v1/sprints/{id}` | Get a sprint | Authenticated |
@@ -215,6 +219,9 @@ npm run dev                         # http://localhost:3000
 | `CORS_ORIGINS` | API | `http://localhost:3000` | Comma-separated origins for direct browser access |
 | `SEED_DEMO_DATA` | API (container) | `true` | Load demo data on start if the DB has no users |
 | `BCRYPT_ROUNDS` | API | `12` | Password hashing cost |
+| `CLIENT_IP_SECRET` | API + Web | unset | Shared secret signing the browser IP from the BFF. When unset, no assertion is accepted and rate limits key on the direct peer (all BFF traffic shares one bucket). Set it to the same value on both services. |
+| `CLIENT_IP_TRUST_PROXY` | Web | unset | Only `true` when a trusted edge overwrites `X-Real-IP`/`X-Forwarded-For` (Vercel is detected automatically via `VERCEL=1`). Leave unset for a directly reachable Next.js server, or clients could choose their own rate-limit bucket. |
+| `RATE_LIMIT_STORAGE_URI` | API | `memory://` | SlowAPI store. Set a Redis URL (e.g. `redis://…:6379/0`) when running multiple workers/instances; `memory://` is per process and resets on restart. |
 | `API_URL` | Web | `http://localhost:8000` | Server-side only; read at request time |
 
 Templates: [`.env.example`](.env.example) (Compose), [`backend/.env.example`](backend/.env.example), [`frontend/.env.example`](frontend/.env.example).
@@ -227,12 +234,93 @@ uv run ruff check . && uv run ruff format --check .
 TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/tracker_test uv run pytest
 
 cd frontend
+npm test
 npm run lint && npm run typecheck && npm run build
 ```
 
-The 72 backend tests run against a real PostgreSQL database built by the Alembic migrations, with each test in a rolled-back transaction. They cover auth (registration rules, expired/tampered tokens, deactivated users), RBAC for every role, every filter and combination, search escaping, sorting, pagination, partial updates, summary maths and sprint rules.
+The **90 backend tests** run against a real PostgreSQL database built by the Alembic migrations, with each test in a rolled-back transaction. They cover auth (registration rules, expired/tampered tokens, deactivated users), rate limiting per trusted client identity, forged forwarding headers, RBAC for every role, every filter and combination, search escaping, sorting, pagination, partial updates, summary maths, task claiming/races and sprint rules.
 
-[GitHub Actions](.github/workflows/ci.yml) runs on every push: backend lint + tests (Postgres service container), frontend lint + type-check + build, then a **Docker Compose smoke test** that boots the full stack, checks readiness, logs in with a seeded account and loads the web app.
+The **13 frontend tests** use Vitest, jsdom and Testing Library. They cover login validation, demo filling, server-error display and the open-redirect guard; creating, editing and validating tasks; inline status changes and their error toast; and claiming/read-only actions. No browser or running API is required.
+
+[GitHub Actions](.github/workflows/ci.yml) runs on every push: backend lint + tests (Postgres service container), frontend lint + type-check + tests + build, then a **Docker Compose smoke test** that boots the full stack, checks readiness, logs in with a seeded account and loads the web app.
+
+## Demo Environment & Security Limitations
+
+This is a portfolio/demo deployment. The limitations below are intentional and must be
+understood before the application is used for anything real.
+
+### Shared, publicly writable demo data
+
+- The seed script creates two accounts that are documented in this README and on the login page:
+  `admin@demo.com` (Admin) and `member@demo.com` (Member), both with password `Password123!`.
+  Anyone can sign in with them.
+- **All visitors share the same data.** Tasks, sprints and user roles are rows in one database;
+  there are no per-visitor workspaces. Changes made by one visitor are visible to everyone.
+- The demo **Admin** can edit and delete every task, create/start/complete/delete sprints, and
+  promote or demote every other user. Visitors can therefore damage or wipe the shared demo
+  data, including each other's work. Treat the demo as disposable and do not enter personal,
+  confidential or production data.
+- Demo seeding is controlled by `SEED_DEMO_DATA`. It only runs when the database has no users,
+  so it will not restore data that a demo admin deletes.
+
+### JWT lifetime and logout
+
+- Authentication uses stateless HS256 JWTs with a **60-minute lifetime**
+  (`ACCESS_TOKEN_EXPIRE_MINUTES`). The Next.js BFF keeps the token in an httpOnly cookie; the
+  browser never reads it directly.
+- **Logout only clears the cookie.** The API has no token denylist or server-side session, so a
+  token that was already copied (from logs, a proxy, a compromised browser, or a saved API
+  client) remains valid until its `exp` claim. Do not claim immediate revocation on logout.
+- If a token must be invalidated across the whole deployment, rotating `JWT_SECRET_KEY` does that
+  immediately by invalidating every existing token — at the cost of signing everyone out.
+  Per-token revocation would require adding a `jti` claim plus a server-side denylist/session
+  store, which this demo intentionally does not have.
+- The API re-reads the user and role from the database on each request, so deleting/deactivating
+  a user or demoting a role takes effect immediately even though the JWT itself stays valid.
+
+### Production recommendations
+
+1. Set `SEED_DEMO_DATA=false`, remove the shared demo accounts, and provision real users.
+2. Set a strong, unique `JWT_SECRET_KEY` (startup refuses the development default in production).
+3. Set a shared `CLIENT_IP_SECRET` on Vercel and Render so rate limits are per browser IP. Only enable `CLIENT_IP_TRUST_PROXY` where the edge is known to overwrite client-IP headers (Vercel does this automatically).
+4. Run more than one API process only with `RATE_LIMIT_STORAGE_URI` pointing at Redis; the
+   in-memory limiter is per process and resets on restart.
+5. If immediate logout/revocation is a requirement, add a `jti` denylist or server-side session
+   store before calling the app production-ready.
+
+## Security Headers & CSP
+
+`frontend/next.config.ts` sets `Content-Security-Policy-Report-Only` plus `X-Frame-Options: DENY`,
+`X-Content-Type-Options: nosniff`, a `Referrer-Policy` and a restrictive `Permissions-Policy`.
+The policy is:
+
+```
+default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self' data:;
+form-action 'self'; frame-ancestors 'none'; img-src 'self' blob: data:; object-src 'none';
+script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'
+```
+
+The app loads no third-party scripts, fonts, images or APIs; Next.js injects inline bootstrap
+scripts and Tailwind/Radix use inline styles, which is why `'unsafe-inline'` is present for
+`script-src` and `style-src`. The policy is intentionally report-only in this demo because no
+production violation reports are collected or reviewed yet and enforcement has not been observed
+against real traffic. A local headless-Chrome check of the production build logged one report-only
+violation from a library's CSP feature detection (`Function("")` inside a `try/catch`), which is
+harmless but would still appear as console noise if enforced.
+
+**Decision:** do not flip enforcement blindly. Stage it:
+
+1. Deploy with the report-only header and add a reporting endpoint
+   (`report-uri`/`report-to`) if you want automated evidence.
+2. Load login, dashboard, sprints and team with DevTools open; a CSP violation appears in the
+   console as `Refused to …` and has no legitimate source in this app. Any violation is a
+   blocker.
+3. Only then rename the header to `Content-Security-Policy` in `next.config.ts`, redeploy and
+   repeat the smoke checks (console, login, task update, logout).
+
+Because `'unsafe-inline'` is allowed for compatibility, CSP here is defence in depth against
+loading external content, not an XSS mitigation; keep React escaping and the httpOnly session
+cookie as the primary controls.
 
 ## Deployment
 
@@ -241,6 +329,8 @@ The stack runs on free tiers: **Neon** (PostgreSQL), **Render** (API, Docker) an
 1. **Neon:** create a project and copy the connection string (`postgresql://…?sslmode=require`).
 2. **Render:** New → **Blueprint** → select this repo. [`render.yaml`](render.yaml) defines the service; paste the Neon string as `DATABASE_URL` (`JWT_SECRET_KEY` is generated). Migrations and demo data run on start; Render health-checks `/health/ready`.
 3. **Vercel:** import the repo, set **Root Directory** to `frontend`, add `API_URL=https://<your-render-service>.onrender.com`, deploy.
+4. **Rate limiting (recommended):** generate one secret and set `CLIENT_IP_SECRET` on **both** Render and Vercel — the BFF signs the browser IP and the API validates it. Without it the API refuses every assertion and keys limits on Render's proxy address, so all users share one login/register bucket. The BFF only reads edge IP headers on Vercel (`VERCEL=1`) or when `CLIENT_IP_TRUST_PROXY=true`; do not enable the latter on a directly reachable server.
+5. **Multiple API workers/instances:** point `RATE_LIMIT_STORAGE_URI` at a Redis-compatible URL so limits are shared. The default in-memory store is per process and resets on restart.
 
 > Render's free instances sleep when idle; the first request after a pause can take ~30–60 s.
 
@@ -249,6 +339,8 @@ The stack runs on free tiers: **Neon** (PostgreSQL), **Render** (API, Docker) an
 The API is stateless — JWTs carry identity and every request re-reads the user — so it scales horizontally behind a load balancer: run several Uvicorn/Gunicorn workers per container and autoscale containers on CPU and latency. The Next.js tier is likewise stateless and served from Vercel's edge/CDN.
 
 PostgreSQL becomes the bottleneck first. I would put PgBouncer (transaction pooling) in front of it, route list and summary reads to read replicas, and keep the composite and partial indexes aligned with real query plans. Offset pagination should move to keyset (cursor) pagination on `(created_at, id)` so deep pages stay O(log n). Dashboard metrics are read far more often than tasks change, so I would cache summaries in Redis per scope and invalidate on writes.
+
+Rate limiting deserves a note: the API excludes proxy-header trust at the Uvicorn layer, so `X-Forwarded-For` cannot change the identity used for throttling. The BFF asserts the browser IP with an HMAC-SHA256 signature over the IP and a short timestamp; the API accepts it only with the shared secret and rejects stale assertions. Without the secret it falls back to the direct peer. For more than one process, set `RATE_LIMIT_STORAGE_URI` to Redis — the default store is in-memory, so each process counts independently and restarts reset counters.
 
 For multi-tenancy at 100k+ daily users, every table gets an `org_id` leading its indexes (with row-level security), and large tenants can later be partitioned or sharded. Slow side effects — notifications, exports, webhooks — go to a queue with background workers. Finally: rate limiting at the gateway, OpenTelemetry tracing, Sentry, and SLO-based alerts.
 

@@ -17,6 +17,13 @@ services:
         generateValue: true
       - key: ENVIRONMENT
         value: production
+      # Must match the value set on Vercel. Signs the browser IP the BFF asserts.
+      - key: CLIENT_IP_SECRET
+        sync: false
+      # Shared limiter store. Leave unset for a single process; set a Redis URL when running
+      # multiple workers/instances (e.g. redis://default:password@host:6379/0).
+      - key: RATE_LIMIT_STORAGE_URI
+        sync: false
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "60"
       # The web app calls the API server-to-server, so browsers never hit it directly.

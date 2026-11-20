@@ -20,6 +20,7 @@ TEST_DATABASE_URL = os.environ.get(
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["BCRYPT_ROUNDS"] = "4"
 os.environ["JWT_SECRET_KEY"] = "test-secret-key-that-is-long-enough-for-hs256"
+os.environ["CLIENT_IP_SECRET"] = "test-client-ip-secret"
 os.environ["ENVIRONMENT"] = "test"
 
 import pytest  # noqa: E402

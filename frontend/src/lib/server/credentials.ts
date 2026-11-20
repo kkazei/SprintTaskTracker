@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   callBackend,
+  clientIpFromRequest,
   errorEnvelope,
   isCrossSiteRequest,
   setSessionToken,
@@ -21,7 +22,11 @@ export async function exchangeCredentials(request: Request, path: "/auth/login" 
     return errorEnvelope(403, "forbidden", "Cross-site request rejected");
   }
 
-  const response = await callBackend(path, { method: "POST", body: await request.text() });
+  const response = await callBackend(path, {
+    method: "POST",
+    body: await request.text(),
+    clientIp: clientIpFromRequest(request),
+  });
   const payload = await response.json();
   if (!response.ok) {
     return Response.json(payload, { status: response.status });
