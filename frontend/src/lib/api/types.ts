@@ -67,7 +67,7 @@ export type Task = {
   sprint: SprintSummary | null;
   created_at: string;
   updated_at: string;
-  permissions: { can_edit: boolean; can_delete: boolean };
+  permissions: { can_edit: boolean; can_delete: boolean; can_claim: boolean };
 };
 
 export type TaskInput = {

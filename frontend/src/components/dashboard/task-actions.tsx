@@ -1,6 +1,7 @@
 "use client";
 
-import { LockIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { LockIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon, UserPlusIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useCurrentUser } from "@/lib/api/auth";
+import { useUpdateTask } from "@/lib/api/queries";
 import type { Task } from "@/lib/api/types";
 
 type Props = {
@@ -23,8 +26,43 @@ type Props = {
  * Row actions, shown according to the per-task permissions the API returns.
  * Status changes live in the row itself (TaskStatusSelect), so this menu is Edit / Delete.
  */
+/** Assign an unassigned task to the current user. The API refuses if someone got there first. */
+function useClaim(task: Task) {
+  const { data: me } = useCurrentUser();
+  const update = useUpdateTask();
+  const claim = () => {
+    if (!me) return;
+    update.mutate(
+      { id: task.id, changes: { assignee_id: me.id } },
+      {
+        onSuccess: () => toast.success(`“${task.title}” is now assigned to you`),
+        onError: (error) => toast.error(error.message),
+      },
+    );
+  };
+  return { claim, isPending: update.isPending, ready: !!me };
+}
+
 export function TaskActions({ task, onEdit, onDelete }: Props) {
-  const { can_edit, can_delete } = task.permissions;
+  const { can_edit, can_delete, can_claim } = task.permissions;
+  const { claim, isPending, ready } = useClaim(task);
+
+  // Members can't edit someone else's task, but they can pick up unassigned work.
+  if (!can_edit && can_claim) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7"
+        disabled={isPending || !ready}
+        onClick={claim}
+        aria-label={`Assign “${task.title}” to me`}
+      >
+        <UserPlusIcon />
+        <span className="hidden lg:inline">Assign to me</span>
+      </Button>
+    );
+  }
 
   if (!can_edit && !can_delete) {
     return (
@@ -55,6 +93,12 @@ export function TaskActions({ task, onEdit, onDelete }: Props) {
           <DropdownMenuItem onSelect={() => onEdit(task)}>
             <PencilIcon />
             Edit
+          </DropdownMenuItem>
+        )}
+        {can_claim && (
+          <DropdownMenuItem onSelect={claim} disabled={isPending || !ready}>
+            <UserPlusIcon />
+            Assign to me
           </DropdownMenuItem>
         )}
         {can_delete && (
