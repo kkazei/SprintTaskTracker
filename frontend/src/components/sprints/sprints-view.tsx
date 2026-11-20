@@ -3,6 +3,7 @@
 import { CalendarRangeIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 
+import { PageHeader } from "@/components/page-header";
 import { RoleNotice } from "@/components/role-notice";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -49,18 +50,18 @@ export function SprintsView() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="grid gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Sprints</h1>
-          <p className="text-muted-foreground text-sm">Plan iterations and track their progress.</p>
-        </div>
-        {isAdmin && (
-          <Button onClick={openCreate}>
-            <PlusIcon />
-            New sprint
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Sprints"
+        description="Plan iterations and track their progress."
+        actions={
+          isAdmin && (
+            <Button onClick={openCreate}>
+              <PlusIcon />
+              New sprint
+            </Button>
+          )
+        }
+      />
 
       {role === "member" && (
         <RoleNotice>

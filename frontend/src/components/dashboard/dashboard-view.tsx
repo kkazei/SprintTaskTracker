@@ -3,6 +3,7 @@
 import { PlusIcon, RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
 
+import { PageHeader } from "@/components/page-header";
 import { RoleNotice } from "@/components/role-notice";
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/lib/api/auth";
@@ -44,19 +45,16 @@ export function DashboardView() {
 
   return (
     <div className="grid gap-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="grid gap-1">
-          {/* Static text: the user's name streams in after hydration, so it lives in the header. */}
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground text-sm">
-            Track your team&apos;s tasks and sprint progress.
-          </p>
-        </div>
-        <Button onClick={openCreate}>
-          <PlusIcon />
-          New task
-        </Button>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Track your team's tasks and sprint progress."
+        actions={
+          <Button onClick={openCreate}>
+            <PlusIcon />
+            New task
+          </Button>
+        }
+      />
 
       {role === "member" && (
         <RoleNotice>
