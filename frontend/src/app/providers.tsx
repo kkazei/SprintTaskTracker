@@ -1,7 +1,9 @@
 "use client";
 
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MotionConfig } from "motion/react";
 import { useRouter } from "next/navigation";
+import { ThemeProvider } from "next-themes";
 import { useState, type ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -41,9 +43,15 @@ export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => makeQueryClient((url) => router.replace(url)));
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
-      <Toaster richColors position="top-right" />
-    </QueryClientProvider>
+    // Theme follows the OS by default; the choice is stored in localStorage by next-themes.
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      {/* Respect the OS "reduce motion" setting for every Motion / Magic UI animation. */}
+      <MotionConfig reducedMotion="user">
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+          <Toaster richColors position="top-right" />
+        </QueryClientProvider>
+      </MotionConfig>
+    </ThemeProvider>
   );
 }

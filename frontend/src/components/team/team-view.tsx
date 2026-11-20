@@ -4,7 +4,7 @@ import { ShieldCheckIcon, UserIcon, UsersIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { RoleNotice } from "@/components/role-notice";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -26,7 +26,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useCurrentUser, useHydrated, useRole } from "@/lib/api/auth";
 import { useChangeRole, useUsers } from "@/lib/api/queries";
 import type { User, UserRole } from "@/lib/api/types";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/task-meta";
 
 export function TeamView() {
@@ -131,9 +131,7 @@ export function TeamView() {
 function MemberName({ user, isMe }: { user: User; isMe: boolean }) {
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <Avatar className="size-7">
-        <AvatarFallback className="text-xs">{initials(user.full_name)}</AvatarFallback>
-      </Avatar>
+      <UserAvatar user={user} />
       <span className="truncate font-medium">{user.full_name}</span>
       {isMe && <span className="text-muted-foreground text-xs">(you)</span>}
     </span>

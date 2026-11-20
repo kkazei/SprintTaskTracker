@@ -2,7 +2,6 @@
 
 import { LogOutIcon, ShieldCheckIcon } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +13,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ThemeMenuItems } from "@/components/layout/theme-menu-items";
+import { UserAvatar } from "@/components/user-avatar";
 import { useCurrentUser, useLogout } from "@/lib/api/auth";
-import { initials } from "@/lib/utils";
 
 export function UserMenu() {
   const { data: user, isPending } = useCurrentUser();
@@ -29,9 +29,7 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-9 gap-2 rounded-full pr-3 pl-1">
-          <Avatar className="size-7">
-            <AvatarFallback className="text-xs">{initials(user.full_name)}</AvatarFallback>
-          </Avatar>
+          <UserAvatar user={user} />
           <span className="hidden text-sm font-medium sm:inline">{user.full_name}</span>
           {user.role === "admin" && (
             <Badge variant="secondary" className="hidden sm:inline-flex">
@@ -50,6 +48,9 @@ export function UserMenu() {
           <ShieldCheckIcon />
           Role: <span className="capitalize">{user.role}</span>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <ThemeMenuItems />
+        <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => logout.mutate()} disabled={logout.isPending}>
           <LogOutIcon />
           Sign out
