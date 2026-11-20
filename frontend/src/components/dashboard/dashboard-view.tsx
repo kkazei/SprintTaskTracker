@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { PageHeader } from "@/components/page-header";
 import { RoleNotice } from "@/components/role-notice";
+import { BlurFade } from "@/components/ui/blur-fade";
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/lib/api/auth";
 import { useSprints, useTasks, useUsers } from "@/lib/api/queries";
@@ -59,69 +60,73 @@ export function DashboardView() {
       {role === "member" && (
         <RoleNotice>
           You&apos;re a <strong className="text-foreground font-medium">member</strong>: you can
-          create tasks, update tasks you reported or are assigned to, and delete tasks you
-          reported. Admins can change any task and manage sprints and roles.
+          create tasks, update tasks you reported or are assigned to, and delete tasks you reported.
+          Admins can change any task and manage sprints and roles.
         </RoleNotice>
       )}
 
-      <SummaryCards
-        scope={scope}
-        scopeLabel={describeScope(view, filters, users, sprints)}
-        enabled={ready}
-      />
-
-      <section aria-labelledby="tasks-heading" className="grid gap-4">
-        <div className="flex items-center justify-between gap-2">
-          <h2 id="tasks-heading" className="text-base font-semibold">
-            Tasks
-          </h2>
-          {tasks.isFetching && !tasks.isPending && (
-            <RefreshCwIcon
-              className="text-muted-foreground size-4 animate-spin"
-              aria-label="Refreshing"
-            />
-          )}
-        </div>
-
-        <TaskFilters
-          filters={filters}
-          view={view}
-          sort={sort}
-          onChange={setFilters}
-          onReset={resetFilters}
-          isFiltered={isFiltered}
-          users={users}
-          sprints={sprints}
+      <BlurFade delay={0.05} duration={0.3}>
+        <SummaryCards
+          scope={scope}
+          scopeLabel={describeScope(view, filters, users, sprints)}
+          enabled={ready}
         />
+      </BlurFade>
 
-        {tasks.isError ? (
-          <div className="border-destructive/30 bg-destructive/5 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-sm">
-            <span>Couldn&apos;t load tasks: {tasks.error.message}</span>
-            <Button variant="outline" size="sm" onClick={() => tasks.refetch()}>
-              Try again
-            </Button>
+      <BlurFade delay={0.1} duration={0.3}>
+        <section aria-labelledby="tasks-heading" className="grid gap-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="tasks-heading" className="text-base font-semibold">
+              Tasks
+            </h2>
+            {tasks.isFetching && !tasks.isPending && (
+              <RefreshCwIcon
+                className="text-muted-foreground size-4 animate-spin"
+                aria-label="Refreshing"
+              />
+            )}
           </div>
-        ) : (
-          <>
-            <TaskList
-              tasks={tasks.data?.data ?? []}
-              isLoading={tasks.isPending}
-              isRefreshing={tasks.isPlaceholderData}
-              emptyMessage={emptyMessage(view, isFiltered)}
-              emptyAction={
-                view !== "all" && !isFiltered ? (
-                  <Button variant="outline" size="sm" onClick={() => setFilters({ view: "all" })}>
-                    Browse all tasks
-                  </Button>
-                ) : undefined
-              }
-              onEdit={openEdit}
-              onDelete={setDeleting}
-            />
-            {meta && <Pagination meta={meta} onPageChange={(page) => setFilters({ page })} />}
-          </>
-        )}
-      </section>
+
+          <TaskFilters
+            filters={filters}
+            view={view}
+            sort={sort}
+            onChange={setFilters}
+            onReset={resetFilters}
+            isFiltered={isFiltered}
+            users={users}
+            sprints={sprints}
+          />
+
+          {tasks.isError ? (
+            <div className="border-destructive/30 bg-destructive/5 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-sm">
+              <span>Couldn&apos;t load tasks: {tasks.error.message}</span>
+              <Button variant="outline" size="sm" onClick={() => tasks.refetch()}>
+                Try again
+              </Button>
+            </div>
+          ) : (
+            <>
+              <TaskList
+                tasks={tasks.data?.data ?? []}
+                isLoading={tasks.isPending}
+                isRefreshing={tasks.isPlaceholderData}
+                emptyMessage={emptyMessage(view, isFiltered)}
+                emptyAction={
+                  view !== "all" && !isFiltered ? (
+                    <Button variant="outline" size="sm" onClick={() => setFilters({ view: "all" })}>
+                      Browse all tasks
+                    </Button>
+                  ) : undefined
+                }
+                onEdit={openEdit}
+                onDelete={setDeleting}
+              />
+              {meta && <Pagination meta={meta} onPageChange={(page) => setFilters({ page })} />}
+            </>
+          )}
+        </section>
+      </BlurFade>
 
       <TaskFormDialog
         open={formOpen}
