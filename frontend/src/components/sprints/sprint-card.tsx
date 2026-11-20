@@ -24,6 +24,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import type { Sprint, SprintStatus } from "@/lib/api/types";
 import { useUpdateSprint } from "@/lib/api/queries";
+import { daysLeftLabel } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { formatDate, sprintStatusMeta } from "@/lib/task-meta";
 
@@ -41,7 +42,12 @@ export function SprintCard({ sprint, canManage, onEdit, onDelete }: Props) {
     : 0;
 
   return (
-    <Card className={cn(sprint.status === "active" && "ring-emerald-500/40 ring-2")}>
+    <Card
+      className={cn(
+        "transition-shadow hover:shadow-md",
+        sprint.status === "active" && "ring-primary/50 ring-2",
+      )}
+    >
       <CardHeader className="flex flex-row items-start justify-between gap-2">
         <div className="grid min-w-0 gap-1.5">
           <span
@@ -58,6 +64,9 @@ export function SprintCard({ sprint, canManage, onEdit, onDelete }: Props) {
           <p className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
             <CalendarRangeIcon className="size-3.5" aria-hidden />
             {formatDate(sprint.start_date)} – {formatDate(sprint.end_date)}
+            {sprint.status === "active" && (
+              <span className="text-primary font-medium">· {daysLeftLabel(sprint.end_date)}</span>
+            )}
           </p>
         </div>
         {canManage && <SprintActions sprint={sprint} onEdit={onEdit} onDelete={onDelete} />}

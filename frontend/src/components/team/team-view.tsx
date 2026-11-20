@@ -3,6 +3,7 @@
 import { ShieldCheckIcon, UserIcon, UsersIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { RoleNotice } from "@/components/role-notice";
 import { UserAvatar } from "@/components/user-avatar";
@@ -57,8 +58,8 @@ export function TeamView() {
       )}
       {isAdmin && (
         <RoleNotice>
-          Admins manage sprints, roles and every task. Members create tasks and change the ones
-          they reported or are assigned to.
+          Admins manage sprints, roles and every task. Members create tasks and change the ones they
+          reported or are assigned to.
         </RoleNotice>
       )}
 
@@ -76,17 +77,14 @@ export function TeamView() {
           ))}
         </div>
       ) : users.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-14 text-center">
-          <UsersIcon className="text-muted-foreground size-8" aria-hidden />
-          <p className="font-medium">No team members yet</p>
-        </div>
+        <EmptyState icon={UsersIcon} title="No team members yet" />
       ) : (
         <>
           {/* Desktop */}
-          <div className="hidden rounded-xl border md:block">
+          <div className="bg-card hidden overflow-hidden rounded-xl border shadow-xs md:block">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/40 hover:bg-muted/40 [&>th]:text-muted-foreground [&>th]:h-10 [&>th]:text-xs [&>th]:font-medium">
                   <TableHead className="pl-4">Member</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Joined</TableHead>
@@ -188,7 +186,9 @@ function RoleControl({ user, canEdit, isMe }: { user: User; canEdit: boolean; is
           { id: user.id, role: role as UserRole },
           {
             onSuccess: (updated) =>
-              toast.success(`${updated.full_name} is now ${updated.role === "admin" ? "an admin" : "a member"}`),
+              toast.success(
+                `${updated.full_name} is now ${updated.role === "admin" ? "an admin" : "a member"}`,
+              ),
             onError: (error) => toast.error(error.message),
           },
         )
