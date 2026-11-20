@@ -11,10 +11,23 @@ A mini SaaS for teams to plan sprints and track tasks: JWT authentication with A
 
 **Stack:** Next.js 16 (App Router, TypeScript, Tailwind, shadcn/ui, TanStack Query) · FastAPI (Python 3.13, SQLAlchemy 2, Alembic, Pydantic v2) · PostgreSQL 16 · Docker Compose · GitHub Actions
 
+## Assessment coverage
+
+| Requirement | Implementation |
+|---|---|
+| Frontend authentication and task dashboard | Next.js login/register flows, responsive dashboard, task CRUD, filtering, search, pagination, assignee/sprint views, and summary metrics |
+| Backend API and access control | FastAPI REST API with JWT authentication, Admin/Member RBAC, validation, standardized response envelopes, and explicit error codes |
+| Database design | PostgreSQL schema managed by Alembic, foreign-key relationships, dashboard-oriented indexes, and idempotent demo seed data |
+| Local setup and deployment | `docker compose up --build` starts the database, API, and web app; Render and Vercel deployment instructions are included below |
+| API documentation | Live Swagger UI/ReDoc links plus the committed [`docs/openapi.json`](docs/openapi.json) snapshot |
+| CI and quality checks | GitHub Actions runs backend lint/tests, frontend lint/type-check/tests/build, and a Docker Compose smoke test |
+| Scaling plan | The [Architecture & Scaling Note](#architecture--scaling-note) covers the 100k+ daily active user target |
+
 ---
 
 ## Contents
 - [Quick start](#quick-start-docker)
+- [Assessment coverage](#assessment-coverage)
 - [Features](#features)
 - [Architecture](#architecture)
 - [API documentation](#api-documentation)
@@ -288,6 +301,10 @@ understood before the application is used for anything real.
 5. If immediate logout/revocation is a requirement, add a `jti` denylist or server-side session
    store before calling the app production-ready.
 
+### Rate limiting details
+
+Rate limiting deserves a note: the API excludes proxy-header trust at the Uvicorn layer, so `X-Forwarded-For` cannot change the identity used for throttling. The BFF asserts the browser IP with an HMAC-SHA256 signature over the IP and a short timestamp; the API accepts it only with the shared secret and rejects stale assertions. Without the secret it falls back to the direct peer. For more than one process, set `RATE_LIMIT_STORAGE_URI` to Redis — the default store is in-memory, so each process counts independently and restarts reset counters.
+
 ## Security Headers & CSP
 
 `frontend/next.config.ts` sets `Content-Security-Policy-Report-Only` plus `X-Frame-Options: DENY`,
@@ -336,13 +353,11 @@ The stack runs on free tiers: **Neon** (PostgreSQL), **Render** (API, Docker) an
 
 ## Architecture & Scaling Note
 
-The API is stateless — JWTs carry identity and every request re-reads the user — so it scales horizontally behind a load balancer: run several Uvicorn/Gunicorn workers per container and autoscale containers on CPU and latency. The Next.js tier is likewise stateless and served from Vercel's edge/CDN.
+At 100,000+ daily active users, I would expect database capacity and connection limits to need attention before splitting the application into more services. The current Next.js and FastAPI setup can stay. Vercel can serve the frontend through its CDN, while FastAPI runs in multiple instances behind a load balancer. Because the API is stateless, instances can be added as traffic grows. I would also move rate-limit storage from process memory to Redis so every API instance shares the same counters.
 
-PostgreSQL becomes the bottleneck first. I would put PgBouncer (transaction pooling) in front of it, route list and summary reads to read replicas, and keep the composite and partial indexes aligned with real query plans. Offset pagination should move to keyset (cursor) pagination on `(created_at, id)` so deep pages stay O(log n). Dashboard metrics are read far more often than tasks change, so I would cache summaries in Redis per scope and invalidate on writes.
+PostgreSQL would need connection pooling through PgBouncer and monitoring for slow queries, locks, and connection usage. I would keep the existing indexes where production query plans show they help. Read replicas could handle read-heavy traffic, while cursor pagination would avoid the cost of deep offset pages. Redis could cache dashboard summaries, with affected entries invalidated after task or sprint updates.
 
-Rate limiting deserves a note: the API excludes proxy-header trust at the Uvicorn layer, so `X-Forwarded-For` cannot change the identity used for throttling. The BFF asserts the browser IP with an HMAC-SHA256 signature over the IP and a short timestamp; the API accepts it only with the shared secret and rejects stale assertions. Without the secret it falls back to the direct peer. For more than one process, set `RATE_LIMIT_STORAGE_URI` to Redis — the default store is in-memory, so each process counts independently and restarts reset counters.
-
-For multi-tenancy at 100k+ daily users, every table gets an `org_id` leading its indexes (with row-level security), and large tenants can later be partitioned or sharded. Slow side effects — notifications, exports, webhooks — go to a queue with background workers. Finally: rate limiting at the gateway, OpenTelemetry tracing, Sentry, and SLO-based alerts.
+Notifications, exports, and webhooks should run in background workers instead of holding up API requests. Before supporting multiple customer workspaces, I would add organization-level data isolation and enforce it in database queries. Partitioning or sharding can wait until measured load justifies them. Load tests, tracing, error monitoring, and latency alerts would guide each step.
 
 ## Project structure
 
