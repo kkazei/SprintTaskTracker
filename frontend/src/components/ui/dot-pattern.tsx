@@ -44,10 +44,10 @@ function Dot({
   glow: boolean
   gradientId: string
 }) {
-  const [timing] = useState(() => ({
-    delay: Math.random() * 5,
-    duration: Math.random() * 3 + 2,
-  }))
+  const timing = {
+    delay: 0,
+    duration: 3,
+  }
 
   return (
     <motion.circle
