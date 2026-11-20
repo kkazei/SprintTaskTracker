@@ -392,3 +392,44 @@ def test_admin_can_delete_any_task(
     task = make_task(reporter_id=member.id)
 
     assert client.delete(f"{TASKS_URL}/{task.id}", headers=admin_headers).status_code == 200
+
+
+def test_filter_due_soon_matches_summary_definition(
+    client: TestClient, member_headers, make_task
+) -> None:
+    make_task(title="Due today", due_date=TODAY)
+    make_task(title="Due in a week", due_date=TODAY + timedelta(days=7))
+    make_task(title="Due in eight days", due_date=TODAY + timedelta(days=8))
+    make_task(title="Overdue", due_date=TODAY - timedelta(days=1))
+    make_task(title="Done soon", due_date=TODAY + timedelta(days=1), status=TaskStatus.DONE)
+    make_task(title="No date")
+
+    titles = _titles(client, member_headers, due_soon="true", sort="due_date")
+    summary = client.get(f"{TASKS_URL}/summary", headers=member_headers).json()["data"]
+
+    assert titles == ["Due today", "Due in a week"]
+    assert summary["due_soon"] == len(titles)
+
+
+def test_sort_by_urgency_puts_open_pressing_work_first(
+    client: TestClient, member_headers, make_task
+) -> None:
+    make_task(title="Done long ago", status=TaskStatus.DONE, due_date=TODAY - timedelta(days=30))
+    make_task(title="No due date", priority=TaskPriority.URGENT)
+    make_task(title="Due later", due_date=TODAY + timedelta(days=5))
+    make_task(title="Overdue", due_date=TODAY - timedelta(days=2))
+    make_task(
+        title="Due tomorrow, low", due_date=TODAY + timedelta(days=1), priority=TaskPriority.LOW
+    )
+    make_task(
+        title="Due tomorrow, high", due_date=TODAY + timedelta(days=1), priority=TaskPriority.HIGH
+    )
+
+    assert _titles(client, member_headers, sort="urgency") == [
+        "Overdue",
+        "Due tomorrow, high",
+        "Due tomorrow, low",
+        "Due later",
+        "No due date",
+        "Done long ago",
+    ]
