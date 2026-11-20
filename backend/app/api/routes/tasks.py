@@ -57,6 +57,7 @@ def to_read(task: Task, user: User) -> TaskRead:
     permissions = TaskPermissions(
         can_edit=task_service.can_edit(user, task),
         can_delete=task_service.can_delete(user, task),
+        can_claim=task_service.can_claim(user, task),
     )
     fields = {name: getattr(task, name) for name in TaskRead.model_fields if name != "permissions"}
     return TaskRead.model_validate({**fields, "permissions": permissions}, from_attributes=True)

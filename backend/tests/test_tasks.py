@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 from app.models import TaskPriority, TaskStatus, User
 from tests.conftest import auth_headers
@@ -25,7 +26,7 @@ def test_create_task_sets_reporter_and_defaults(
     assert task["priority"] == "medium"
     assert task["reporter"]["id"] == member.id
     assert task["assignee"] is None
-    assert task["permissions"] == {"can_edit": True, "can_delete": True}
+    assert task["permissions"] == {"can_edit": True, "can_delete": True, "can_claim": True}
 
 
 def test_create_task_with_assignee_and_sprint(
@@ -359,8 +360,8 @@ def test_permissions_reflect_current_user(
     as_member = client.get(f"{TASKS_URL}/{task.id}", headers=auth_headers(member)).json()["data"]
     as_admin = client.get(f"{TASKS_URL}/{task.id}", headers=auth_headers(admin)).json()["data"]
 
-    assert as_member["permissions"] == {"can_edit": True, "can_delete": False}
-    assert as_admin["permissions"] == {"can_edit": True, "can_delete": True}
+    assert as_member["permissions"] == {"can_edit": True, "can_delete": False, "can_claim": False}
+    assert as_admin["permissions"] == {"can_edit": True, "can_delete": True, "can_claim": False}
 
 
 # --- delete ----------------------------------------------------------------------------------
@@ -433,3 +434,100 @@ def test_sort_by_urgency_puts_open_pressing_work_first(
         "No due date",
         "Done long ago",
     ]
+
+
+# --- claiming unassigned work ----------------------------------------------------------------
+
+
+def test_member_can_claim_unassigned_task(
+    client: TestClient, member: User, admin: User, make_task
+) -> None:
+    task = make_task(reporter_id=admin.id)
+    headers = auth_headers(member)
+    before = client.get(f"{TASKS_URL}/{task.id}", headers=headers).json()["data"]["permissions"]
+
+    response = client.patch(
+        f"{TASKS_URL}/{task.id}", json={"assignee_id": member.id}, headers=headers
+    )
+
+    assert before == {"can_edit": False, "can_delete": False, "can_claim": True}
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["assignee"]["id"] == member.id
+    # Once claimed it's theirs: they can edit it, and it can't be claimed again.
+    assert data["permissions"] == {"can_edit": True, "can_delete": False, "can_claim": False}
+
+
+def test_member_cannot_claim_for_someone_else(
+    client: TestClient, member: User, admin: User, make_task
+) -> None:
+    task = make_task(reporter_id=admin.id)
+
+    response = client.patch(
+        f"{TASKS_URL}/{task.id}", json={"assignee_id": admin.id}, headers=auth_headers(member)
+    )
+
+    assert response.status_code == 403
+
+
+def test_member_cannot_claim_an_assigned_task(
+    client: TestClient, member: User, admin: User, make_task
+) -> None:
+    task = make_task(reporter_id=admin.id, assignee_id=admin.id)
+
+    response = client.patch(
+        f"{TASKS_URL}/{task.id}", json={"assignee_id": member.id}, headers=auth_headers(member)
+    )
+
+    assert response.status_code == 403
+
+
+def test_claim_cannot_change_other_fields(
+    client: TestClient, member: User, admin: User, make_task
+) -> None:
+    task = make_task(reporter_id=admin.id, title="Original")
+
+    response = client.patch(
+        f"{TASKS_URL}/{task.id}",
+        json={"assignee_id": member.id, "title": "Hijacked"},
+        headers=auth_headers(member),
+    )
+
+    assert response.status_code == 403
+    assert (
+        client.get(f"{TASKS_URL}/{task.id}", headers=auth_headers(admin)).json()["data"]["title"]
+        == "Original"
+    )
+
+
+def test_claim_loses_race_cleanly(
+    client: TestClient, db, member: User, admin: User, make_user, make_task
+) -> None:
+    task = make_task(reporter_id=admin.id)
+    rival = make_user()
+    # Simulate another member claiming between our read and our write.
+    from app.services import tasks as task_service
+
+    original_get = task_service.get_task
+    calls = {"n": 0}
+
+    def get_then_steal(session, task_id):
+        found = original_get(session, task_id)
+        calls["n"] += 1
+        if calls["n"] == 1:
+            session.execute(
+                text("UPDATE tasks SET assignee_id = :uid WHERE id = :tid"),
+                {"uid": rival.id, "tid": task_id},
+            )
+        return found
+
+    task_service.get_task = get_then_steal
+    try:
+        response = client.patch(
+            f"{TASKS_URL}/{task.id}", json={"assignee_id": member.id}, headers=auth_headers(member)
+        )
+    finally:
+        task_service.get_task = original_get
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "already_assigned"

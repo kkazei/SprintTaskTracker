@@ -29,6 +29,7 @@ class TaskSort(StrEnum):
 class TaskPermissions(BaseModel):
     can_edit: bool
     can_delete: bool
+    can_claim: bool = Field(description="The task is unassigned and can be assigned to yourself")
 
 
 class TaskRead(BaseModel):
