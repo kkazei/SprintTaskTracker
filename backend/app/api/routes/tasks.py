@@ -33,6 +33,9 @@ def task_filters(
         str | None, Query(max_length=100, description="Case-insensitive search in titles")
     ] = None,
     overdue: Annotated[bool, Query(description="Only open tasks past their due date")] = False,
+    due_soon: Annotated[
+        bool, Query(description="Only open tasks due within the next 7 days (incl. today)")
+    ] = False,
 ) -> TaskFilters:
     return TaskFilters(
         statuses=status or [],
@@ -43,6 +46,7 @@ def task_filters(
         sprint_id=sprint_id,
         search=q,
         overdue=overdue,
+        due_soon=due_soon,
     )
 
 

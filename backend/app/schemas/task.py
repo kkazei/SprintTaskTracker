@@ -15,6 +15,7 @@ TaskDescription = Annotated[str, StringConstraints(strip_whitespace=True, max_le
 class TaskSort(StrEnum):
     """Sort keys accepted by `GET /tasks`. A leading `-` means descending."""
 
+    URGENCY = "urgency"  # open first, then soonest due date, then highest priority
     CREATED_DESC = "-created_at"
     CREATED_ASC = "created_at"
     UPDATED_DESC = "-updated_at"

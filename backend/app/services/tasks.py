@@ -22,9 +22,17 @@ class TaskFilters:
     sprint_id: int | None = None
     search: str | None = None
     overdue: bool = False
+    due_soon: bool = False
 
 
 _SORT_ORDER = {
+    # "What should I work on next?": open work first, then the most pressing due date
+    # (overdue dates sort first), then the highest priority.
+    TaskSort.URGENCY: [
+        (Task.status == TaskStatus.DONE).asc(),
+        Task.due_date.asc().nulls_last(),
+        Task.priority.desc(),
+    ],
     TaskSort.CREATED_DESC: [Task.created_at.desc()],
     TaskSort.CREATED_ASC: [Task.created_at.asc()],
     TaskSort.UPDATED_DESC: [Task.updated_at.desc()],
@@ -73,6 +81,11 @@ def _conditions(filters: TaskFilters) -> list[ColumnElement[bool]]:
         # Matches the partial index ix_tasks_due_date_open.
         conditions.append(Task.status != TaskStatus.DONE)
         conditions.append(Task.due_date < utc_today())
+    if filters.due_soon:
+        # Same definition as the "due_soon" summary metric, so the list and the card agree.
+        today = utc_today()
+        conditions.append(Task.status != TaskStatus.DONE)
+        conditions.append(Task.due_date.between(today, today + timedelta(days=DUE_SOON_DAYS)))
     return conditions
 
 
