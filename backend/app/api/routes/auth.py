@@ -1,6 +1,7 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, Response, status
 
 from app.api.deps import CurrentUser, DbSession
+from app.core.rate_limit import limiter
 from app.core.responses import ERROR_RESPONSES, ApiResponse, ok
 from app.core.security import create_access_token
 from app.models import User
@@ -23,13 +24,19 @@ def _token_for(user: User) -> TokenResponse:
     status_code=status.HTTP_201_CREATED,
     summary="Create a member account and log in",
 )
-def register(payload: RegisterRequest, db: DbSession) -> ApiResponse[TokenResponse]:
+@limiter.limit("3/hour")
+def register(
+    request: Request, response: Response, payload: RegisterRequest, db: DbSession
+) -> ApiResponse[TokenResponse]:
     user = user_service.register(db, payload)
     return ok(_token_for(user))
 
 
 @router.post("/login", summary="Exchange email and password for an access token")
-def login(payload: LoginRequest, db: DbSession) -> ApiResponse[TokenResponse]:
+@limiter.limit("5/minute")
+def login(
+    request: Request, response: Response, payload: LoginRequest, db: DbSession
+) -> ApiResponse[TokenResponse]:
     user = user_service.authenticate(db, payload.email, payload.password)
     return ok(_token_for(user))
 

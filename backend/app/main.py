@@ -3,12 +3,15 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
 
 from app.api.deps import DbSession
 from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
+from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s [%(name)s] %(message)s")
 
@@ -29,6 +32,8 @@ def create_app() -> FastAPI:
         ),
     )
 
+    app.state.limiter = limiter
+    app.add_middleware(SlowAPIMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
@@ -37,6 +42,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     register_exception_handlers(app)
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
     app.include_router(api_router, prefix=settings.api_prefix)
 
     @app.get("/", include_in_schema=False)

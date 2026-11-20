@@ -104,6 +104,43 @@ def test_login_with_wrong_password_fails(client: TestClient, member: User) -> No
     assert response.json()["error"]["code"] == "invalid_credentials"
 
 
+def test_login_is_rate_limited_by_client_ip(client: TestClient, member: User) -> None:
+    for _ in range(5):
+        response = client.post(LOGIN_URL, json={"email": member.email, "password": "wrong-pass1"})
+        assert response.status_code == 401
+
+    response = client.post(LOGIN_URL, json={"email": member.email, "password": "wrong-pass1"})
+
+    assert response.status_code == 429
+    assert response.json()["error"]["code"] == "rate_limited"
+    assert response.headers["retry-after"]
+
+
+def test_registration_is_rate_limited_by_client_ip(client: TestClient) -> None:
+    for number in range(3):
+        response = client.post(
+            REGISTER_URL,
+            json={
+                "email": f"new{number}@example.com",
+                "full_name": "New User",
+                "password": "abc12345",
+            },
+        )
+        assert response.status_code == 201
+
+    response = client.post(
+        REGISTER_URL,
+        json={
+            "email": "limited@example.com",
+            "full_name": "Limited User",
+            "password": "abc12345",
+        },
+    )
+
+    assert response.status_code == 429
+    assert response.json()["error"]["code"] == "rate_limited"
+
+
 def test_login_with_unknown_email_fails_the_same_way(client: TestClient) -> None:
     response = client.post(LOGIN_URL, json={"email": "ghost@example.com", "password": "abc12345"})
 
