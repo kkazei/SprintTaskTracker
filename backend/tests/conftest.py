@@ -29,6 +29,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+from app.core.rate_limit import limiter  # noqa: E402
 from app.core.security import create_access_token, hash_password  # noqa: E402
 from app.db.session import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
@@ -63,6 +64,14 @@ def db() -> Iterator[Session]:
         session.close()
         transaction.rollback()
         connection.close()
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter() -> Iterator[None]:
+    """Keep SlowAPI's in-memory counters isolated between tests."""
+    limiter.reset()
+    yield
+    limiter.reset()
 
 
 @pytest.fixture
