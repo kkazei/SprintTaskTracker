@@ -1,6 +1,7 @@
 "use client";
 
 import { ClipboardListIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -15,18 +16,28 @@ import type { Task } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 
 import { TaskActions } from "./task-actions";
-import { AssigneeLabel, DueDate, PriorityBadge, StatusBadge } from "./task-badges";
+import { AssigneeLabel, DueDate, PriorityBadge } from "./task-badges";
+import { TaskStatusSelect } from "./task-status-select";
 
 type Props = {
   tasks: Task[];
   isLoading: boolean;
   isRefreshing: boolean;
   emptyMessage: string;
+  emptyAction?: ReactNode;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
 };
 
-export function TaskList({ tasks, isLoading, isRefreshing, emptyMessage, onEdit, onDelete }: Props) {
+export function TaskList({
+  tasks,
+  isLoading,
+  isRefreshing,
+  emptyMessage,
+  emptyAction,
+  onEdit,
+  onDelete,
+}: Props) {
   if (isLoading) return <TaskListSkeleton />;
 
   if (tasks.length === 0) {
@@ -35,6 +46,7 @@ export function TaskList({ tasks, isLoading, isRefreshing, emptyMessage, onEdit,
         <ClipboardListIcon className="text-muted-foreground size-8" aria-hidden />
         <p className="font-medium">No tasks found</p>
         <p className="text-muted-foreground max-w-sm text-sm">{emptyMessage}</p>
+        {emptyAction}
       </div>
     );
   }
@@ -81,7 +93,7 @@ export function TaskList({ tasks, isLoading, isRefreshing, emptyMessage, onEdit,
                   </span>
                 </TableCell>
                 <TableCell>
-                  <StatusBadge status={task.status} />
+                  <TaskStatusSelect task={task} />
                 </TableCell>
                 <TableCell>
                   <PriorityBadge priority={task.priority} />
@@ -115,7 +127,7 @@ export function TaskList({ tasks, isLoading, isRefreshing, emptyMessage, onEdit,
               <TaskActions task={task} onEdit={onEdit} onDelete={onDelete} />
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <StatusBadge status={task.status} />
+              <TaskStatusSelect task={task} />
               <PriorityBadge priority={task.priority} />
               <DueDate task={task} />
             </div>

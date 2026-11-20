@@ -5,9 +5,9 @@ import { useState } from "react";
 
 import { RoleNotice } from "@/components/role-notice";
 import { Button } from "@/components/ui/button";
-import { useCurrentUser, useRole } from "@/lib/api/auth";
+import { useRole } from "@/lib/api/auth";
 import { useSprints, useTasks, useUsers } from "@/lib/api/queries";
-import type { Task } from "@/lib/api/types";
+import type { Sprint, Task, User } from "@/lib/api/types";
 
 import { DeleteTaskDialog } from "./delete-task-dialog";
 import { Pagination } from "./pagination";
@@ -15,17 +15,17 @@ import { SummaryCards } from "./summary-cards";
 import { TaskFilters } from "./task-filters";
 import { TaskFormDialog } from "./task-form-dialog";
 import { TaskList } from "./task-list";
-import { useTaskFilters } from "./use-task-filters";
+import { useTaskFilters, type TaskFilterState, type TaskView } from "./use-task-filters";
 
 export function DashboardView() {
-  const { data: me } = useCurrentUser();
   const role = useRole();
   const { data: users = [] } = useUsers();
   const { data: sprints = [] } = useSprints();
-  const { filters, setFilters, resetFilters, isFiltered, scope, listParams } = useTaskFilters(
-    me?.id,
-  );
-  const tasks = useTasks(listParams);
+  const { filters, view, sort, ready, setFilters, resetFilters, isFiltered, scope, listParams } =
+    useTaskFilters();
+  // Wait until the view (and, for personal views, the user's id) is known, so the first
+  // request is the right one instead of "all tasks" followed by "my tasks".
+  const tasks = useTasks(listParams, { enabled: ready });
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -40,7 +40,6 @@ export function DashboardView() {
     setFormOpen(true);
   }
 
-  const scopeLabel = describeScope(filters.assignee, filters.sprint, users, sprints);
   const meta = tasks.data?.meta;
 
   return (
@@ -62,12 +61,16 @@ export function DashboardView() {
       {role === "member" && (
         <RoleNotice>
           You&apos;re a <strong className="text-foreground font-medium">member</strong>: you can
-          create tasks, edit tasks you reported or are assigned to, and delete tasks you
+          create tasks, update tasks you reported or are assigned to, and delete tasks you
           reported. Admins can change any task and manage sprints and roles.
         </RoleNotice>
       )}
 
-      <SummaryCards scope={scope} scopeLabel={scopeLabel} />
+      <SummaryCards
+        scope={scope}
+        scopeLabel={describeScope(view, filters, users, sprints)}
+        enabled={ready}
+      />
 
       <section aria-labelledby="tasks-heading" className="grid gap-4">
         <div className="flex items-center justify-between gap-2">
@@ -75,12 +78,17 @@ export function DashboardView() {
             Tasks
           </h2>
           {tasks.isFetching && !tasks.isPending && (
-            <RefreshCwIcon className="text-muted-foreground size-4 animate-spin" aria-label="Refreshing" />
+            <RefreshCwIcon
+              className="text-muted-foreground size-4 animate-spin"
+              aria-label="Refreshing"
+            />
           )}
         </div>
 
         <TaskFilters
           filters={filters}
+          view={view}
+          sort={sort}
           onChange={setFilters}
           onReset={resetFilters}
           isFiltered={isFiltered}
@@ -101,10 +109,13 @@ export function DashboardView() {
               tasks={tasks.data?.data ?? []}
               isLoading={tasks.isPending}
               isRefreshing={tasks.isPlaceholderData}
-              emptyMessage={
-                isFiltered
-                  ? "No tasks match these filters. Try widening your search."
-                  : "Create the first task to get started."
+              emptyMessage={emptyMessage(view, isFiltered)}
+              emptyAction={
+                view !== "all" && !isFiltered ? (
+                  <Button variant="outline" size="sm" onClick={() => setFilters({ view: "all" })}>
+                    Browse all tasks
+                  </Button>
+                ) : undefined
               }
               onEdit={openEdit}
               onDelete={setDeleting}
@@ -126,21 +137,32 @@ export function DashboardView() {
   );
 }
 
+function emptyMessage(view: TaskView | undefined, isFiltered: boolean): string {
+  if (isFiltered) return "No tasks match these filters. Try widening your search.";
+  if (view === "mine") return "Nothing is assigned to you right now.";
+  if (view === "reported") return "You haven't created any tasks yet.";
+  return "Create the first task to get started.";
+}
+
 function describeScope(
-  assignee: string,
-  sprint: string,
-  users: { id: number; full_name: string }[],
-  sprints: { id: number; name: string }[],
+  view: TaskView | undefined,
+  filters: TaskFilterState,
+  users: User[],
+  sprints: Sprint[],
 ): string {
   const who =
-    assignee === "me"
-      ? "your tasks"
-      : assignee === "unassigned"
-        ? "unassigned tasks"
-        : assignee === "all"
-          ? "all tasks"
-          : `tasks for ${users.find((u) => String(u.id) === assignee)?.full_name ?? "this person"}`;
+    view === "mine"
+      ? "tasks assigned to you"
+      : view === "reported"
+        ? "tasks you reported"
+        : filters.assignee === "unassigned"
+          ? "unassigned tasks"
+          : filters.assignee === "all"
+            ? "all tasks"
+            : `tasks for ${users.find((u) => String(u.id) === filters.assignee)?.full_name ?? "this person"}`;
   const where =
-    sprint === "all" ? "" : ` in ${sprints.find((s) => String(s.id) === sprint)?.name ?? "this sprint"}`;
+    filters.sprint === "all"
+      ? ""
+      : ` in ${sprints.find((s) => String(s.id) === filters.sprint)?.name ?? "this sprint"}`;
   return who + where;
 }

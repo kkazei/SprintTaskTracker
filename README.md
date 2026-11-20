@@ -47,7 +47,9 @@ On startup the API container applies the Alembic migrations and loads demo data 
 **Frontend**
 - Login and registration with client-side validation; API field errors are shown on the matching inputs.
 - Dashboard with summary metrics — total, completed (with completion rate), pending, overdue, due this week — plus a status breakdown. Metrics follow the selected assignee/sprint scope.
-- Task list with filters for **status, priority, assignee, sprint, overdue** and a debounced **title search**, plus sorting and server-side pagination. Filters live in the URL, so views can be bookmarked and shared.
+- **My tasks / Reported by me / All tasks** tabs. Members land on *My tasks* sorted **most urgent first** (open work, then soonest due date, then priority); admins land on *All tasks*. The last tab you picked is remembered.
+- One-click **Overdue** and **Due this week** chips, plus filters for **status, priority, assignee, sprint** and a debounced **title search**, sorting and server-side pagination. Filters live in the URL, so views can be bookmarked and shared.
+- **Change status right in the row**: the status cell is a dropdown on tasks you're allowed to edit.
 - Create, edit, delete (with confirmation) and quick "move to status" actions. Actions are shown according to per-task permissions returned by the API; tasks you can't change show a lock with an explanation.
 - **Sprints page:** sprint cards with status, dates, goal and progress, plus a link to each sprint's tasks. Admins create, edit, start, complete and delete sprints.
 - **Team page:** everyone's role at a glance; admins promote or demote members.
@@ -115,7 +117,7 @@ flowchart LR
 | `PATCH` | `/api/v1/users/{id}/role` | Change a role | Admin |
 | `GET` | `/health`, `/health/ready` | Liveness / readiness (checks DB) | Public |
 
-**Task list query parameters:** `status` and `priority` (repeatable), `assignee_id`, `unassigned`, `reporter_id`, `sprint_id`, `q` (case-insensitive title search; wildcards matched literally), `overdue`, `sort` (`-created_at` default, `created_at`, `-updated_at`, `due_date`, `-due_date`, `priority`, `-priority`, `title`), `page`, `page_size` (≤ 100).
+**Task list query parameters:** `status` and `priority` (repeatable), `assignee_id`, `unassigned`, `reporter_id`, `sprint_id`, `q` (case-insensitive title search; wildcards matched literally), `overdue`, `due_soon`, `sort` (`-created_at` default, `urgency`, `created_at`, `-updated_at`, `due_date`, `-due_date`, `priority`, `-priority`, `title`), `page`, `page_size` (≤ 100).
 
 **Response envelope**
 
